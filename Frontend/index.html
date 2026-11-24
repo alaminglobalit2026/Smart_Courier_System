@@ -1,0 +1,936 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101b33">
+  <title>Smart Courier System | Courier Operations</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <style>
+    .auth-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #101b33;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      padding: 35px;
+      border-radius: 18px;
+      background: white;
+      color: #17233c;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    }
+
+    .auth-card h1 {
+      margin: 0 0 8px;
+      font-size: 27px;
+    }
+
+    .auth-card p {
+      color: #718096;
+      margin-bottom: 25px;
+    }
+
+    .auth-card label {
+      display: block;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .auth-card input {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin-top: 7px;
+      border: 1px solid #dce3ed;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    .auth-card button {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .auth-error {
+      color: #dc2626;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .auth-brand {
+      font-size: 14px;
+      font-weight: 800;
+      color: #4263eb;
+      margin-bottom: 20px;
+      letter-spacing: 1px;
+    }
+
+    .logout-button {
+      border: none;
+      background: transparent;
+      color: #dc2626;
+      cursor: pointer;
+      font: inherit;
+      padding: 5px 8px;
+    }
+
+    .full-field {
+      grid-column: 1 / -1;
+    }
+
+    .readonly-tracking {
+      background: #f1f5f9;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- =====================================
+     ADMIN LOGIN
+===================================== -->
+<div class="auth-screen" id="loginScreen">
+  <form class="auth-card" id="adminLoginForm">
+
+    <div class="auth-brand">SMART COURIER SYSTEM</div>
+
+    <h1>Admin Login</h1>
+    <p>Sign in to manage your courier operations.</p>
+
+    <label>
+      Admin Email
+      <input
+        type="email"
+        id="adminEmail"
+        placeholder="Enter admin email"
+        autocomplete="username"
+        required
+      >
+    </label>
+
+    <label>
+      Password
+      <input
+        type="password"
+        id="adminPassword"
+        placeholder="Enter password"
+        autocomplete="current-password"
+        required
+      >
+    </label>
+
+    <button type="submit" class="btn btn-primary" id="adminLoginBtn">
+      Login to Dashboard
+    </button>
+
+    <div class="auth-error" id="loginError"></div>
+
+  </form>
+</div>
+
+
+<!-- =====================================
+     MAIN APPLICATION
+===================================== -->
+<div class="app-shell" id="appShell" style="display:none;">
+
+  <aside class="sidebar" id="sidebar">
+
+    <a class="brand" href="#" aria-label="Smart Courier System home">
+      <span class="brand-mark">S</span>
+      <span>
+        Smart <span class="brand-light">Courier</span>
+        <small>SYSTEM · COURIER OPERATIONS</small>
+      </span>
+    </a>
+
+    <div class="workspace">
+      <span class="workspace-icon">⌂</span>
+      <span>
+        <b>Operations HQ</b>
+        <small>South Korea · Main branch</small>
+      </span>
+      <span class="workspace-arrow">⌄</span>
+    </div>
+
+    <p class="nav-caption">WORKSPACE</p>
+
+    <nav class="nav-menu">
+      <a href="#dashboard" class="nav-link active" data-page="dashboard">
+        <span class="nav-icon">▦</span>Dashboard
+      </a>
+
+      <a href="#parcels" class="nav-link" data-page="parcels">
+        <span class="nav-icon">▣</span>Parcel management
+        <span class="nav-count" id="navParcelCount">0</span>
+      </a>
+
+      <a href="#deliveries" class="nav-link" data-page="deliveries">
+        <span class="nav-icon">⇢</span>Deliveries
+      </a>
+
+      <a href="#drivers" class="nav-link" data-page="drivers">
+        <span class="nav-icon">♙</span>Drivers
+      </a>
+
+      <a href="#tracking" class="nav-link" data-page="tracking">
+        <span class="nav-icon">⌖</span>Customer tracking
+      </a>
+    </nav>
+
+    <p class="nav-caption nav-caption-gap">MANAGEMENT</p>
+
+    <nav class="nav-menu">
+      <a href="#reports" class="nav-link" data-page="reports">
+        <span class="nav-icon">▤</span>Reports & analytics
+      </a>
+
+      <a href="#settings" class="nav-link" data-page="settings">
+        <span class="nav-icon">⚙</span>Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+
+      <div class="help-card">
+        <span class="help-symbol">?</span>
+        <b>Need a hand?</b>
+        <p>Visit the help center for setup tips and guidance.</p>
+        <button type="button" id="helpBtn">Visit help center ↗</button>
+      </div>
+
+      <div class="user-mini">
+        <div class="avatar avatar-purple">AD</div>
+        <span>
+          <b id="sidebarAdminName">Admin User</b>
+          <small>Administrator</small>
+        </span>
+        <button type="button" class="logout-button" id="logoutBtn">Logout</button>
+      </div>
+
+    </div>
+  </aside>
+
+
+  <main class="main-area">
+
+    <header class="topbar">
+
+      <div class="topbar-left">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open menu">☰</button>
+        <div class="breadcrumb">
+          Workspace <span>/</span>
+          <b id="breadcrumbPage">Dashboard</b>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+
+        <div class="search-global">
+          <span>⌕</span>
+          <input id="globalSearch" type="search" placeholder="Search anything...">
+          <kbd>⌘ K</kbd>
+        </div>
+
+        <button class="icon-button notification-button" id="notificationBtn" aria-label="Notifications">
+          ♧<i></i>
+        </button>
+
+        <div class="top-user">
+          <div class="avatar avatar-purple">AD</div>
+          <span>
+            <b id="topAdminName">Admin User</b>
+            <small>Administrator</small>
+          </span>
+          <span class="chevron">⌄</span>
+        </div>
+
+      </div>
+    </header>
+
+
+    <div class="content-wrap">
+
+      <!-- DASHBOARD -->
+      <section class="page active" id="dashboard">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">OVERVIEW</p>
+            <h1>Good morning, Admin <span class="wave">✦</span></h1>
+            <p class="page-subtitle">Here’s what’s happening with your deliveries today.</p>
+          </div>
+
+          <div class="heading-actions">
+            <button class="btn btn-secondary" id="exportBtn">↓ Export report</button>
+            <button class="btn btn-primary" id="quickAddBtn">＋ Create shipment</button>
+          </div>
+        </div>
+
+        <div class="metric-grid">
+
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Total shipments</span>
+              <span class="metric-icon blue">▣</span>
+            </div>
+            <div class="metric-value" id="metricTotal">0</div>
+            <div class="metric-foot">
+              <span class="trend positive">↗ Live count</span>
+              <span>All parcels</span>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>In transit</span>
+              <span class="metric-icon orange">⇢</span>
+            </div>
+            <div class="metric-value" id="metricTransit">0</div>
+            <div class="metric-foot">
+              <span class="trend neutral">On the road</span>
+              <span>Active routes</span>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Delivered</span>
+              <span class="metric-icon green">✓</span>
+            </div>
+            <div class="metric-value" id="metricDelivered">0</div>
+            <div class="metric-foot">
+              <span class="trend positive">Completed</span>
+              <span>Successfully</span>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Delivery issues</span>
+              <span class="metric-icon red">!</span>
+            </div>
+            <div class="metric-value" id="metricIssues">0</div>
+            <div class="metric-foot">
+              <span class="trend warning">Needs attention</span>
+              <span>Cancelled / delayed</span>
+            </div>
+          </article>
+
+        </div>
+
+
+        <div class="dashboard-grid">
+
+          <article class="surface chart-panel">
+
+            <div class="surface-heading">
+              <div>
+                <h2>Delivery performance</h2>
+                <p>Shipment status overview</p>
+              </div>
+              <span class="period-pill">Current data</span>
+            </div>
+
+            <div class="chart-legend">
+              <span><i class="legend-dot dot-green"></i>Delivered</span>
+              <span><i class="legend-dot dot-blue"></i>In transit</span>
+              <span><i class="legend-dot dot-orange"></i>Pending</span>
+            </div>
+
+            <div class="chart-area">
+              <div class="y-labels">
+                <span>100</span><span>75</span><span>50</span><span>25</span><span>0</span>
+              </div>
+
+              <div class="chart-bars" aria-label="Illustrative weekly delivery chart">
+                <div class="bar-group"><div class="bars"><i style="height:45%"></i><i style="height:25%"></i><i style="height:18%"></i></div><small>Mon</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:60%"></i><i style="height:22%"></i><i style="height:14%"></i></div><small>Tue</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:53%"></i><i style="height:30%"></i><i style="height:12%"></i></div><small>Wed</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:76%"></i><i style="height:17%"></i><i style="height:9%"></i></div><small>Thu</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:66%"></i><i style="height:24%"></i><i style="height:11%"></i></div><small>Fri</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:88%"></i><i style="height:20%"></i><i style="height:8%"></i></div><small>Sat</small></div>
+                <div class="bar-group"><div class="bars"><i style="height:57%"></i><i style="height:19%"></i><i style="height:13%"></i></div><small>Sun</small></div>
+              </div>
+            </div>
+
+            <p class="chart-note">Weekly chart illustration. Shipment totals are loaded from the backend.</p>
+
+          </article>
+
+
+          <article class="surface status-panel">
+
+            <div class="surface-heading">
+              <div>
+                <h2>Shipment status</h2>
+                <p>Current parcel distribution</p>
+              </div>
+              <button class="text-button" data-goto="parcels">View all ↗</button>
+            </div>
+
+            <div class="donut-wrap">
+              <div class="donut" id="statusDonut">
+                <div>
+                  <b id="donutTotal">0</b>
+                  <small>Shipments</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="status-breakdown">
+              <div><span><i class="legend-dot dot-green"></i>Delivered</span><b id="breakDelivered">0</b></div>
+              <div><span><i class="legend-dot dot-blue"></i>In transit</span><b id="breakTransit">0</b></div>
+              <div><span><i class="legend-dot dot-orange"></i>Pending</span><b id="breakPending">0</b></div>
+              <div><span><i class="legend-dot dot-red"></i>Cancelled</span><b id="breakFailed">0</b></div>
+            </div>
+
+          </article>
+        </div>
+
+
+        <article class="surface table-panel">
+
+          <div class="surface-heading">
+            <div>
+              <h2>Recent shipments</h2>
+              <p>Keep track of your latest parcel activity</p>
+            </div>
+            <button class="btn btn-secondary btn-small" data-goto="parcels">View all shipments →</button>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>TRACKING ID</th>
+                  <th>CUSTOMER</th>
+                  <th>DESTINATION</th>
+                  <th>DRIVER</th>
+                  <th>STATUS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="recentRows"></tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" id="recentEmpty">
+            <span>▣</span>
+            <b>No shipments yet</b>
+            <p>Create your first shipment to see activity here.</p>
+            <button class="btn btn-primary btn-small" data-open-parcel>＋ Create shipment</button>
+          </div>
+
+        </article>
+
+      </section>
+
+
+      <!-- PARCELS -->
+      <section class="page" id="parcels">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">SHIPMENT MANAGEMENT</p>
+            <h1>Parcel management</h1>
+            <p class="page-subtitle">Create, search and manage all your shipments.</p>
+          </div>
+          <button class="btn btn-primary" data-open-parcel>＋ Create shipment</button>
+        </div>
+
+        <article class="surface table-panel">
+
+          <div class="list-toolbar">
+            <div class="filter-search">
+              ⌕ <input id="parcelSearch" placeholder="Search by tracking ID or customer">
+            </div>
+
+            <select id="statusFilter">
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="picked_up">Picked Up</option>
+              <option value="in_transit">In Transit</option>
+              <option value="out_for_delivery">Out for Delivery</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>TRACKING ID</th>
+                  <th>CUSTOMER</th>
+                  <th>PHONE</th>
+                  <th>DESTINATION</th>
+                  <th>DRIVER</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody id="parcelRows"></tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" id="parcelEmpty">
+            <span>▣</span>
+            <b>No matching parcels</b>
+            <p>Try a different search or create a new shipment.</p>
+          </div>
+
+        </article>
+      </section>
+
+
+      <!-- DELIVERIES -->
+      <section class="page" id="deliveries">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">LAST-MILE OPERATIONS</p>
+            <h1>Delivery operations</h1>
+            <p class="page-subtitle">Monitor parcel delivery progress.</p>
+          </div>
+        </div>
+
+        <article class="surface table-panel">
+
+          <div class="surface-heading">
+            <div>
+              <h2>Delivery status updates</h2>
+              <p>Status is synchronized with the backend.</p>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>TRACKING ID</th>
+                  <th>CUSTOMER</th>
+                  <th>DRIVER</th>
+                  <th>CURRENT STATUS</th>
+                  <th>UPDATE STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="deliveryRows"></tbody>
+            </table>
+          </div>
+
+          <div class="empty-state" id="deliveryEmpty">
+            <b>No deliveries to show</b>
+            <p>Create a shipment to get started.</p>
+          </div>
+
+        </article>
+      </section>
+
+
+      <!-- DRIVERS -->
+      <section class="page" id="drivers">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">FLEET MANAGEMENT</p>
+            <h1>Driver directory</h1>
+            <p class="page-subtitle">Manage your delivery team and assigned shipments.</p>
+          </div>
+          <button class="btn btn-primary" id="addDriverBtn">＋ Add driver</button>
+        </div>
+
+        <div class="driver-grid" id="driverGrid"></div>
+
+        <div class="empty-state surface" id="driverEmpty">
+          <span>♙</span>
+          <b>No drivers added</b>
+          <p>Add your first driver to assign deliveries.</p>
+          <button class="btn btn-primary btn-small" id="emptyAddDriver">＋ Add driver</button>
+        </div>
+
+      </section>
+
+
+      <!-- TRACKING -->
+      <section class="page" id="tracking">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">CUSTOMER EXPERIENCE</p>
+            <h1>Public parcel tracking</h1>
+            <p class="page-subtitle">Look up a parcel using its tracking number and receiver phone.</p>
+          </div>
+        </div>
+
+        <article class="surface tracking-card">
+
+          <div class="tracking-art">⌖</div>
+          <h2>Where is your parcel?</h2>
+          <p>Enter your tracking number and receiver phone number.</p>
+
+          <form id="trackingForm" class="tracking-form">
+            <input id="trackingInput" placeholder="e.g. SC123456789" required>
+            <input id="trackingPhone" placeholder="Receiver phone number" required>
+            <button class="btn btn-primary">Track parcel →</button>
+          </form>
+
+          <div id="trackingResult" class="tracking-result"></div>
+
+          <small class="privacy-note">Live tracking information is retrieved from the backend.</small>
+
+        </article>
+      </section>
+
+
+      <!-- REPORTS -->
+      <section class="page" id="reports">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">BUSINESS INSIGHTS</p>
+            <h1>Reports & analytics</h1>
+            <p class="page-subtitle">A summary of your shipment operations.</p>
+          </div>
+          <button class="btn btn-secondary" id="reportExport">↓ Download CSV</button>
+        </div>
+
+        <div class="metric-grid report-metrics" id="reportMetrics"></div>
+
+        <article class="surface table-panel">
+
+          <div class="surface-heading">
+            <div>
+              <h2>Shipment report</h2>
+              <p>Current records across all statuses</p>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>TRACKING ID</th>
+                  <th>CUSTOMER</th>
+                  <th>DESTINATION</th>
+                  <th>STATUS</th>
+                  <th>CREATED</th>
+                </tr>
+              </thead>
+              <tbody id="reportRows"></tbody>
+            </table>
+          </div>
+
+        </article>
+      </section>
+
+
+      <!-- SETTINGS -->
+      <section class="page" id="settings">
+
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">PREFERENCES</p>
+            <h1>Settings</h1>
+            <p class="page-subtitle">Manage your courier notification preferences.</p>
+          </div>
+        </div>
+
+        <article class="surface settings-card">
+          <h2>📱 SMS Notification</h2>
+          <p>Manage SMS alerts for your customers.</p>
+
+          <div class="settings-actions">
+            <label class="toggle-label">
+              <input type="checkbox" id="smsEnabled">
+              Enable SMS Notification
+              <span class="toggle-status" id="smsStatus">OFF</span>
+            </label>
+          </div>
+
+          <label>SMS Provider
+            <select id="smsProvider">
+              <option value="twilio">Twilio</option>
+              <option value="other">Other Provider</option>
+            </select>
+          </label>
+        </article>
+
+        <article class="surface settings-card">
+          <h2>📧 Email Notification</h2>
+          <p>Manage email alerts for your customers.</p>
+
+          <div class="settings-actions">
+            <label class="toggle-label">
+              <input type="checkbox" id="emailEnabled">
+              Enable Email Notification
+              <span class="toggle-status" id="emailStatus">OFF</span>
+            </label>
+          </div>
+
+          <label>Email Service
+            <select id="emailProvider">
+              <option value="sendgrid">SendGrid</option>
+              <option value="other">Other Provider</option>
+            </select>
+          </label>
+        </article>
+
+        <article class="surface settings-card">
+          <h2>🔔 Automatic Notifications</h2>
+          <p>Choose when customers should receive updates.</p>
+
+          <label><input type="checkbox" id="notifyPending" checked> Parcel Received</label>
+          <label><input type="checkbox" id="notifyTransit" checked> Parcel In Transit</label>
+          <label><input type="checkbox" id="notifyDelivered" checked> Parcel Delivered</label>
+          <label><input type="checkbox" id="notifyFailed" checked> Delivery Cancelled</label>
+        </article>
+
+        <article class="surface settings-card">
+          <button class="btn btn-primary" id="saveNotificationSettings">
+            Save Notification Settings
+          </button>
+        </article>
+
+        <article class="surface settings-card">
+          <h2>Backend connection</h2>
+          <p>Shipment and driver records are stored in MongoDB through the Smart Courier API.</p>
+          <div class="settings-actions">
+            <button class="btn btn-secondary" id="refreshDataBtn">Refresh backend data</button>
+            <button class="btn btn-danger" id="clearDataBtn">Logout</button>
+          </div>
+        </article>
+
+      </section>
+
+
+      <footer class="footer">
+        <span>© 2026 Smart Courier System Operations</span>
+        <span>Courier operations workspace <i class="online-dot"></i></span>
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+
+<!-- =====================================
+     CREATE PARCEL MODAL
+===================================== -->
+<div class="modal-backdrop" id="parcelModal">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow" id="parcelModalEyebrow">NEW SHIPMENT</p>
+        <h2 id="parcelModalTitle">Create a shipment</h2>
+      </div>
+      <button class="modal-close" data-close="parcelModal">×</button>
+    </div>
+
+    <form id="parcelForm" class="modal-form">
+
+      <div class="form-grid">
+
+        <label class="full-field">
+          Tracking Number
+          <input
+            id="trackingId"
+            class="readonly-tracking"
+            placeholder="Generated automatically after booking"
+            readonly
+          >
+        </label>
+
+        <label>Sender Name
+          <input id="senderName" placeholder="Sender full name" required>
+        </label>
+
+        <label>Sender Phone
+          <input id="senderPhone" type="tel" placeholder="+82 10 0000 0000" required>
+        </label>
+
+        <label>Receiver Name
+          <input id="receiverName" placeholder="Receiver full name" required>
+        </label>
+
+        <label>Receiver Phone
+          <input id="receiverPhone" type="tel" placeholder="+82 10 0000 0000" required>
+        </label>
+
+        <label class="full-field">Pickup Address
+          <input id="pickupAddress" placeholder="Full pickup address" required>
+        </label>
+
+        <label class="full-field">Delivery Address
+          <input id="deliveryAddress" placeholder="Full delivery address" required>
+        </label>
+
+        <label class="full-field">Parcel Description
+          <input id="parcelDescription" placeholder="Describe the parcel" required>
+        </label>
+
+        <label>Weight (KG)
+          <input id="weightKg" type="number" min="0.1" step="0.1" placeholder="1.0" required>
+        </label>
+
+        <label>Assign Driver
+          <select id="parcelDriver">
+            <option value="">Unassigned</option>
+          </select>
+        </label>
+
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close="parcelModal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="parcelSaveBtn">Book shipment</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+
+<!-- =====================================
+     VIEW PARCEL DETAILS MODAL
+===================================== -->
+<div class="modal-backdrop" id="viewParcelModal">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">SHIPMENT DETAILS</p>
+        <h2>Parcel information</h2>
+      </div>
+      <button class="modal-close" data-close="viewParcelModal">×</button>
+    </div>
+
+    <div id="viewParcelContent"></div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" data-close="viewParcelModal">Close</button>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- =====================================
+     ADD DRIVER MODAL
+===================================== -->
+<div class="modal-backdrop" id="driverModal">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">FLEET MANAGEMENT</p>
+        <h2 id="driverModalTitle">Add a driver</h2>
+      </div>
+      <button class="modal-close" data-close="driverModal">×</button>
+    </div>
+
+    <form id="driverForm" class="modal-form">
+
+      <div class="form-grid">
+
+        <label>Driver Name
+          <input id="driverName" placeholder="Full name" required>
+        </label>
+
+        <label>Phone Number
+          <input id="driverPhone" type="tel" placeholder="+82 10 0000 0000" required>
+        </label>
+
+        <label class="full-field">Driver Email
+          <input id="driverEmail" type="email" placeholder="driver@example.com" required>
+        </label>
+
+        <label class="full-field">Driver Password
+          <input id="driverPassword" type="password" minlength="8" placeholder="Minimum 8 characters" required>
+        </label>
+
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close="driverModal">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="driverSaveBtn">Create driver account</button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+
+<!-- =====================================
+     VIEW DRIVER DETAILS MODAL
+===================================== -->
+<div class="modal-backdrop" id="viewDriverModal">
+
+  <div class="modal-card">
+
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">FLEET MANAGEMENT</p>
+        <h2>Driver Details</h2>
+      </div>
+      <button class="modal-close" data-close="viewDriverModal">×</button>
+    </div>
+
+    <div class="modal-form">
+
+      <div class="form-grid">
+
+        <label>Driver Name
+          <input id="viewDriverName" readonly>
+        </label>
+
+        <label>Phone Number
+          <input id="viewDriverPhone" readonly>
+        </label>
+
+        <label class="full-field">Email Address
+          <input id="viewDriverEmail" readonly>
+        </label>
+
+        <label class="full-field">Active Assigned Shipments
+          <input id="viewDriverShipments" readonly>
+        </label>
+
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" data-close="viewDriverModal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

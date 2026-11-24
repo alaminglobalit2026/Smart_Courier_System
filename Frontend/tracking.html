@@ -1,0 +1,375 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Smart Courier Live Tracking</title>
+
+<!-- Leaflet CSS -->
+<link
+ rel="stylesheet"
+ href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f5fa;
+    padding: 20px;
+}
+
+.container {
+    max-width: 650px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+}
+
+input, button {
+    width: 100%;
+    padding: 13px;
+    margin: 10px 0;
+    font-size: 16px;
+}
+
+input {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+button {
+    background: #1677e8;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#map {
+    width: 100%;
+    height: 400px;
+    margin-top: 15px;
+    border-radius: 10px;
+}
+
+#message {
+    padding: 12px;
+    background: #f1f5f9;
+    border-radius: 6px;
+}
+
+#details {
+    line-height: 1.7;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>Smart Courier System</h2>
+    <h3>Customer Live Tracking</h3>
+
+    <input
+        id="trackingNumber"
+        placeholder="Enter Tracking Number"
+    >
+
+    <input
+        id="receiverPhone"
+        placeholder="Enter Receiver Phone"
+    >
+
+    <button id="trackButton" onclick="trackParcel()">
+        Track Parcel
+    </button>
+
+    <p id="message">
+        Enter parcel information to start tracking.
+    </p>
+
+    <div id="details"></div>
+
+    <div id="map"></div>
+
+</div>
+
+<!-- Leaflet JavaScript -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+// BACKEND URL
+const API_BASE =
+"https://smart-courier-system.onrender.com";
+
+let trackingInterval = null;
+let currentTracking = "";
+let currentPhone = "";
+
+let map = null;
+let driverMarker = null;
+
+
+// INITIALIZE MAP
+function initializeMap() {
+
+    if (map) return;
+
+    // Initial map view
+    map = L.map("map").setView(
+        [35.3093, 128.3613],
+        14
+    );
+
+    // OpenStreetMap tiles
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+
+            maxZoom: 19
+        }
+    ).addTo(map);
+}
+
+
+// START TRACKING
+async function trackParcel() {
+
+    const tracking =
+        document.getElementById("trackingNumber")
+        .value.trim();
+
+    const phone =
+        document.getElementById("receiverPhone")
+        .value.trim();
+
+    const message =
+        document.getElementById("message");
+
+    const button =
+        document.getElementById("trackButton");
+
+    if (!tracking || !phone) {
+
+        message.textContent =
+        "Please enter Tracking Number and Receiver Phone.";
+
+        return;
+    }
+
+    // Stop previous tracking
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+        trackingInterval = null;
+    }
+
+    currentTracking = tracking;
+    currentPhone = phone;
+
+    driverMarker = null;
+
+    initializeMap();
+
+    button.disabled = true;
+    button.textContent = "Connecting...";
+
+    message.textContent =
+    "Connecting to tracking server...";
+
+    try {
+
+        await updateLiveLocation();
+
+        trackingInterval = setInterval(() => {
+
+            updateLiveLocation();
+
+        }, 5000);
+
+    } catch (error) {
+
+        message.textContent =
+        error.message || "Tracking failed.";
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Track Parcel";
+
+    }
+}
+
+
+// FETCH LIVE LOCATION
+async function updateLiveLocation() {
+
+    const message =
+        document.getElementById("message");
+
+    const details =
+        document.getElementById("details");
+
+    try {
+
+        const url =
+            API_BASE +
+            "/api/parcels/live/" +
+            encodeURIComponent(currentTracking) +
+            "?receiverPhone=" +
+            encodeURIComponent(currentPhone);
+
+        const response = await fetch(url);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.message || "Unable to track parcel."
+            );
+
+        }
+
+        // Parcel information
+        details.innerHTML = "";
+
+        const heading = document.createElement("h3");
+
+        heading.textContent =
+            "Tracking: " +
+            (data.trackingNumber || currentTracking);
+
+        details.appendChild(heading);
+
+        if (data.status) {
+
+            const status = document.createElement("p");
+
+            status.textContent =
+                "Parcel Status: " + data.status;
+
+            details.appendChild(status);
+
+        }
+
+        // Check GPS availability
+        if (
+            !data.locationSharingEnabled ||
+            !data.driverLocation
+        ) {
+
+            message.textContent =
+            "Driver GPS is currently unavailable.";
+
+            return;
+        }
+
+        const lat =
+            Number(data.driverLocation.latitude);
+
+        const lng =
+            Number(data.driverLocation.longitude);
+
+        if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lng) ||
+            lat < -90 || lat > 90 ||
+            lng < -180 || lng > 180
+        ) {
+
+            throw new Error("Invalid GPS coordinates.");
+
+        }
+
+        // Display coordinates
+        const latitude =
+            document.createElement("p");
+
+        latitude.textContent =
+            "Latitude: " + lat;
+
+        const longitude =
+            document.createElement("p");
+
+        longitude.textContent =
+            "Longitude: " + lng;
+
+        details.appendChild(latitude);
+        details.appendChild(longitude);
+
+        // Last update time
+        if (data.driverLocation.updatedAt) {
+
+            const updated =
+                document.createElement("p");
+
+            updated.textContent =
+                "Last Updated: " +
+                new Date(
+                    data.driverLocation.updatedAt
+                ).toLocaleString();
+
+            details.appendChild(updated);
+
+        }
+
+        // FIRST LOCATION
+        if (!driverMarker) {
+
+            driverMarker = L.marker([lat, lng])
+                .addTo(map)
+                .bindPopup("Delivery Driver");
+
+            map.setView([lat, lng], 16);
+
+        } else {
+
+            // MOVE EXISTING MARKER
+            driverMarker.setLatLng([lat, lng]);
+
+            // Follow driver
+            map.panTo([lat, lng], {
+                animate: true,
+                duration: 0.5
+            });
+
+        }
+
+        message.textContent =
+        "Driver is online. Live location is updating!";
+
+    } catch (error) {
+
+        message.textContent =
+            error.message || "Location update failed.";
+
+    }
+
+}
+
+
+// STOP TRACKING WHEN PAGE CLOSES
+window.addEventListener("beforeunload", () => {
+
+    if (trackingInterval) {
+        clearInterval(trackingInterval);
+    }
+
+});
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1012 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Smart Courier - Driver Dashboard</title>
+
+<style>
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+.container {
+    max-width: 750px;
+    margin: 30px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+}
+
+h1 {
+    text-align: center;
+    color: #1d4ed8;
+    margin-bottom: 8px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #64748b;
+    margin-bottom: 25px;
+}
+
+h3 {
+    color: #1e40af;
+    margin-top: 25px;
+}
+
+label {
+    display: block;
+    margin: 15px 0 7px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    font-size: 15px;
+    background: white;
+}
+
+button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 7px;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 12px;
+    margin-right: 6px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.primary {
+    background: #2563eb;
+    width: 100%;
+}
+
+.success {
+    background: #16a34a;
+}
+
+.danger {
+    background: #dc2626;
+}
+
+.warning {
+    background: #d97706;
+}
+
+.card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 18px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.info {
+    margin-top: 12px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+}
+
+.status {
+    padding: 12px;
+    border-radius: 7px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    margin-top: 15px;
+    overflow-wrap: anywhere;
+}
+
+.gps-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.hidden {
+    display: none;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 25px 0;
+}
+
+.logout {
+    background: #64748b;
+    width: 100%;
+}
+
+.footer {
+    text-align: center;
+    color: #94a3b8;
+    margin-top: 25px;
+    font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Smart Courier</h1>
+    <p class="subtitle">Driver GPS & Parcel Management Dashboard</p>
+
+    <!-- LOGIN SECTION -->
+    <div id="loginSection">
+
+        <h3>Driver Login</h3>
+
+        <label for="email">Email Address</label>
+        <input
+            type="email"
+            id="email"
+            placeholder="Enter driver email"
+            value="driver1@smartcourier.com"
+        >
+
+        <label for="password">Password</label>
+        <input
+            type="password"
+            id="password"
+            placeholder="Enter password"
+        >
+
+        <button class="primary" id="loginButton" onclick="login()">
+            Login
+        </button>
+
+        <p id="loginMessage" class="status"></p>
+
+    </div>
+
+
+    <!-- DASHBOARD SECTION -->
+    <div id="dashboardSection" class="hidden">
+
+        <div class="card">
+            <h3>Driver Information</h3>
+            <div class="info">
+                <strong>Name:</strong>
+                <span id="driverName">-</span>
+                <br>
+
+                <strong>Email:</strong>
+                <span id="driverEmail">-</span>
+            </div>
+        </div>
+
+
+        <!-- PARCEL SECTION -->
+        <div class="card">
+
+            <h3>My Assigned Parcels</h3>
+
+            <label for="parcelSelect">Select Your Parcel</label>
+
+            <select id="parcelSelect">
+                <option value="">Loading parcels...</option>
+            </select>
+
+            <button
+                class="primary"
+                onclick="loadParcels()"
+            >
+                Refresh Parcel List
+            </button>
+
+            <p id="parcelMessage" class="status">
+                Select an assigned parcel.
+            </p>
+
+        </div>
+
+
+        <!-- GPS SECTION -->
+        <div class="card">
+
+            <h3>Live GPS Tracking</h3>
+
+            <p>
+                Start GPS sharing to allow customers to see
+                your live delivery location.
+            </p>
+
+            <button
+                class="success"
+                id="startButton"
+                onclick="startGPS()"
+                disabled
+            >
+                Start GPS
+            </button>
+
+            <button
+                class="danger"
+                id="stopButton"
+                onclick="stopGPS()"
+                disabled
+            >
+                Stop GPS
+            </button>
+
+            <div id="gpsMessage" class="status">
+                GPS is currently stopped.
+            </div>
+
+            <div class="info">
+                <strong>Latitude:</strong>
+                <span id="latitude">-</span>
+                <br>
+
+                <strong>Longitude:</strong>
+                <span id="longitude">-</span>
+                <br>
+
+                <strong>Last Update:</strong>
+                <span id="lastUpdate">-</span>
+            </div>
+
+        </div>
+
+
+        <!-- STATUS UPDATE SECTION -->
+        <div class="card">
+
+            <h3>Update Parcel Status</h3>
+
+            <label for="statusSelect">
+                Select New Parcel Status
+            </label>
+
+            <select id="statusSelect">
+                <option value="picked_up">Picked Up</option>
+                <option value="in_transit">In Transit</option>
+                <option value="out_for_delivery">Out for Delivery</option>
+                <option value="delivered">Delivered</option>
+            </select>
+
+            <button
+                class="warning"
+                id="statusButton"
+                onclick="updateParcelStatus()"
+                disabled
+            >
+                Update Parcel Status
+            </button>
+
+            <p id="statusMessage" class="status">
+                Select a parcel to update its status.
+            </p>
+
+        </div>
+
+
+        <button class="logout" onclick="logout()">
+            Logout
+        </button>
+
+    </div>
+
+    <p class="footer">
+        Smart Courier System | Driver Management
+    </p>
+
+</div>
+
+
+<script>
+
+// =====================================
+// API CONFIGURATION
+// =====================================
+
+const API_BASE = "https://smart-courier-system.onrender.com";
+
+
+// =====================================
+// GLOBAL VARIABLES
+// =====================================
+
+let token = localStorage.getItem("driverToken") || "";
+
+let currentUser = null;
+
+let assignedParcels = [];
+
+let watchId = null;
+
+let sendingLocation = false;
+
+let currentTrackingNumber = "";
+
+
+// =====================================
+// HTML ELEMENTS
+// =====================================
+
+const loginSection = document.getElementById("loginSection");
+
+const dashboardSection = document.getElementById("dashboardSection");
+
+const parcelSelect = document.getElementById("parcelSelect");
+
+const startButton = document.getElementById("startButton");
+
+const stopButton = document.getElementById("stopButton");
+
+
+// =====================================
+// API REQUEST FUNCTION
+// =====================================
+
+async function apiRequest(endpoint, method = "GET", body = null) {
+
+    const headers = {
+        "Content-Type": "application/json"
+    };
+
+    if (token) {
+        headers.Authorization = "Bearer " + token;
+    }
+
+    const options = {
+        method,
+        headers
+    };
+
+    if (body !== null) {
+        options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(API_BASE + endpoint, options);
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+        throw new Error(data.message || "Server request failed");
+    }
+
+    return data;
+}
+
+
+// =====================================
+// DRIVER LOGIN
+// =====================================
+
+async function login() {
+
+    const email = document.getElementById("email").value.trim();
+
+    const password = document.getElementById("password").value;
+
+    const loginMessage = document.getElementById("loginMessage");
+
+    const loginButton = document.getElementById("loginButton");
+
+    if (!email || !password) {
+        loginMessage.textContent = "Please enter email and password.";
+        return;
+    }
+
+    loginButton.disabled = true;
+
+    loginMessage.textContent = "Logging in...";
+
+    try {
+
+        const data = await apiRequest(
+            "/api/auth/login",
+            "POST",
+            {
+                email,
+                password
+            }
+        );
+
+        if (!data.token || !data.user) {
+            throw new Error("Invalid login response.");
+        }
+
+        if (data.user.role !== "driver") {
+            throw new Error("This account is not a driver account.");
+        }
+
+        token = data.token;
+
+        currentUser = data.user;
+
+        localStorage.setItem("driverToken", token);
+
+        loginSection.classList.add("hidden");
+
+        dashboardSection.classList.remove("hidden");
+
+        document.getElementById("driverName").textContent =
+            currentUser.name || "-";
+
+        document.getElementById("driverEmail").textContent =
+            currentUser.email || "-";
+
+        await loadParcels();
+
+    } catch (error) {
+
+        loginMessage.textContent = "Login failed: " + error.message;
+
+    } finally {
+
+        loginButton.disabled = false;
+
+    }
+}
+
+
+// =====================================
+// LOAD ASSIGNED PARCELS
+// =====================================
+
+async function loadParcels() {
+
+    const parcelMessage = document.getElementById("parcelMessage");
+
+    const previousSelection = parcelSelect.value;
+
+    parcelMessage.textContent = "Loading assigned parcels...";
+
+    try {
+
+        const data = await apiRequest("/api/driver/my-parcels");
+
+        assignedParcels = (data.parcels || []).filter(
+            parcel => !["delivered", "cancelled"].includes(parcel.status)
+        );
+
+        parcelSelect.innerHTML = "";
+
+        if (assignedParcels.length === 0) {
+
+            const option = document.createElement("option");
+
+            option.value = "";
+
+            option.textContent = "No active assigned parcels";
+
+            parcelSelect.appendChild(option);
+
+            startButton.disabled = true;
+
+            document.getElementById("statusButton").disabled = true;
+
+            parcelMessage.textContent = "No active assigned parcels found.";
+
+            return;
+        }
+
+        assignedParcels.forEach(parcel => {
+
+            const option = document.createElement("option");
+
+            option.value = parcel.trackingNumber;
+
+            option.textContent =
+                parcel.trackingNumber + " - " + parcel.status;
+
+            parcelSelect.appendChild(option);
+
+        });
+
+        if (
+            assignedParcels.some(
+                parcel => parcel.trackingNumber === previousSelection
+            )
+        ) {
+            parcelSelect.value = previousSelection;
+        }
+
+        startButton.disabled = false;
+
+        parcelMessage.textContent =
+            assignedParcels.length + " active parcel(s) loaded.";
+
+        syncStatusSelect();
+
+    } catch (error) {
+
+        parcelMessage.textContent =
+            "Failed to load parcels: " + error.message;
+
+        startButton.disabled = true;
+
+        document.getElementById("statusButton").disabled = true;
+
+    }
+}
+
+
+// =====================================
+// SYNC STATUS SELECT
+// =====================================
+
+function syncStatusSelect() {
+
+    const trackingNumber = parcelSelect.value;
+
+    const parcel = assignedParcels.find(
+        p => p.trackingNumber === trackingNumber
+    );
+
+    const statusSelect = document.getElementById("statusSelect");
+
+    const statusButton = document.getElementById("statusButton");
+
+    if (!parcel) {
+
+        statusButton.disabled = true;
+
+        return;
+    }
+
+    const allowedStatuses = [
+        "picked_up",
+        "in_transit",
+        "out_for_delivery",
+        "delivered"
+    ];
+
+    if (allowedStatuses.includes(parcel.status)) {
+
+        statusSelect.value = parcel.status;
+
+    } else {
+
+        statusSelect.value = "picked_up";
+
+    }
+
+    statusButton.disabled = false;
+
+    document.getElementById("statusMessage").textContent =
+        "Current parcel status: " + parcel.status;
+
+}
+
+parcelSelect.addEventListener("change", syncStatusSelect);
+
+
+// =====================================
+// UPDATE PARCEL STATUS
+// =====================================
+
+async function updateParcelStatus() {
+
+    const trackingNumber = parcelSelect.value;
+
+    const newStatus = document.getElementById("statusSelect").value;
+
+    const statusMessage = document.getElementById("statusMessage");
+
+    const statusButton = document.getElementById("statusButton");
+
+    if (!trackingNumber) {
+
+        statusMessage.textContent = "Please select a parcel.";
+
+        return;
+    }
+
+    if (sendingLocation && currentTrackingNumber !== trackingNumber) {
+
+        statusMessage.textContent =
+            "Stop GPS before changing the selected parcel.";
+
+        return;
+    }
+
+    statusButton.disabled = true;
+
+    statusMessage.textContent = "Updating parcel status...";
+
+    try {
+
+        const data = await apiRequest(
+            "/api/driver/update-status",
+            "PUT",
+            {
+                trackingNumber: trackingNumber,
+                status: newStatus
+            }
+        );
+
+        statusMessage.textContent =
+            "Parcel status updated successfully: " + newStatus;
+
+        await loadParcels();
+
+        if (newStatus === "delivered") {
+
+            await stopGPS();
+
+        }
+
+    } catch (error) {
+
+        statusMessage.textContent =
+            "Status update failed: " + error.message;
+
+    } finally {
+
+        statusButton.disabled = false;
+
+    }
+}
+
+
+// =====================================
+// START GPS
+// =====================================
+
+async function startGPS() {
+
+    const trackingNumber = parcelSelect.value;
+
+    const gpsMessage = document.getElementById("gpsMessage");
+
+    if (!trackingNumber) {
+
+        gpsMessage.textContent = "Please select a parcel first.";
+
+        return;
+    }
+
+    if (!navigator.geolocation) {
+
+        gpsMessage.textContent =
+            "Geolocation is not supported by this browser.";
+
+        return;
+    }
+
+    if (sendingLocation) {
+
+        gpsMessage.textContent = "GPS is already running.";
+
+        return;
+    }
+
+    const parcel = assignedParcels.find(
+        p => p.trackingNumber === trackingNumber
+    );
+
+    if (!parcel) {
+
+        gpsMessage.textContent = "Selected parcel was not found.";
+
+        return;
+    }
+
+    if (["delivered", "cancelled"].includes(parcel.status)) {
+
+        gpsMessage.textContent =
+            "GPS cannot start for this parcel status.";
+
+        return;
+    }
+
+    startButton.disabled = true;
+
+    gpsMessage.textContent = "Enabling GPS sharing...";
+
+    try {
+
+        await apiRequest(
+            "/api/driver/location-sharing",
+            "PUT",
+            {
+                trackingNumber: trackingNumber,
+                enabled: true
+            }
+        );
+
+        currentTrackingNumber = trackingNumber;
+
+        sendingLocation = true;
+
+        watchId = navigator.geolocation.watchPosition(
+
+            sendLocation,
+
+            handleGPSError,
+
+            {
+                enableHighAccuracy: true,
+                maximumAge: 5000,
+                timeout: 15000
+            }
+
+        );
+
+        stopButton.disabled = false;
+
+        gpsMessage.textContent =
+            "GPS Sharing Active. Waiting for location...";
+
+        gpsMessage.classList.add("gps-active");
+
+    } catch (error) {
+
+        sendingLocation = false;
+
+        currentTrackingNumber = "";
+
+        startButton.disabled = false;
+
+        gpsMessage.textContent =
+            "Could not start GPS: " + error.message;
+
+    }
+
+}
+
+
+// =====================================
+// SEND GPS LOCATION TO BACKEND
+// =====================================
+
+async function sendLocation(position) {
+
+    if (!sendingLocation) return;
+
+    const latitude = position.coords.latitude;
+
+    const longitude = position.coords.longitude;
+
+    document.getElementById("latitude").textContent =
+        latitude.toFixed(7);
+
+    document.getElementById("longitude").textContent =
+        longitude.toFixed(7);
+
+    document.getElementById("lastUpdate").textContent =
+        new Date().toLocaleString();
+
+    if (!sendingLocation) return;
+
+    try {
+
+        await apiRequest(
+            "/api/driver/update-location",
+            "PUT",
+            {
+                trackingNumber: currentTrackingNumber,
+                latitude: latitude,
+                longitude: longitude
+            }
+        );
+
+        document.getElementById("gpsMessage").textContent =
+            "GPS Sharing Active - Location sent successfully.";
+
+        document.getElementById("gpsMessage").classList.add("gps-active");
+
+    } catch (error) {
+
+        document.getElementById("gpsMessage").textContent =
+            "Location update failed: " + error.message;
+
+    }
+
+}
+
+
+// =====================================
+// GPS ERROR HANDLER
+// =====================================
+
+function handleGPSError(error) {
+
+    let errorMessage = "GPS error.";
+
+    if (error.code === 1) {
+
+        errorMessage = "Location permission denied. Please allow location access.";
+
+    } else if (error.code === 2) {
+
+        errorMessage = "Your current location is unavailable.";
+
+    } else if (error.code === 3) {
+
+        errorMessage = "GPS request timed out.";
+
+    }
+
+    document.getElementById("gpsMessage").textContent = errorMessage;
+
+}
+
+
+// =====================================
+// STOP GPS
+// =====================================
+
+async function stopGPS() {
+
+    const gpsMessage = document.getElementById("gpsMessage");
+
+    const trackingNumber = currentTrackingNumber;
+
+    sendingLocation = false;
+
+    if (watchId !== null) {
+
+        navigator.geolocation.clearWatch(watchId);
+
+        watchId = null;
+
+    }
+
+    if (trackingNumber) {
+
+        try {
+
+            await apiRequest(
+                "/api/driver/location-sharing",
+                "PUT",
+                {
+                    trackingNumber: trackingNumber,
+                    enabled: false
+                }
+            );
+
+            gpsMessage.textContent =
+                "GPS sharing stopped successfully.";
+
+        } catch (error) {
+
+            gpsMessage.textContent =
+                "GPS stopped locally, but server update failed: " +
+                error.message;
+
+        }
+
+    } else {
+
+        gpsMessage.textContent = "GPS is currently stopped.";
+
+    }
+
+    currentTrackingNumber = "";
+
+    startButton.disabled = parcelSelect.options.length === 0 ||
+        !parcelSelect.value;
+
+    stopButton.disabled = true;
+
+    gpsMessage.classList.remove("gps-active");
+
+}
+
+
+// =====================================
+// LOGOUT
+// =====================================
+
+async function logout() {
+
+    if (sendingLocation) {
+
+        await stopGPS();
+
+    }
+
+    token = "";
+
+    currentUser = null;
+
+    assignedParcels = [];
+
+    localStorage.removeItem("driverToken");
+
+    dashboardSection.classList.add("hidden");
+
+    loginSection.classList.remove("hidden");
+
+    document.getElementById("password").value = "";
+
+    document.getElementById("loginMessage").textContent =
+        "You have logged out successfully.";
+
+    document.getElementById("latitude").textContent = "-";
+
+    document.getElementById("longitude").textContent = "-";
+
+    document.getElementById("lastUpdate").textContent = "-";
+
+}
+
+
+// =====================================
+// RESTORE DRIVER SESSION
+// =====================================
+
+async function restoreSession() {
+
+    if (!token) return;
+
+    try {
+
+        const data = await apiRequest("/api/driver/dashboard");
+
+        currentUser = data.driver;
+
+        if (!currentUser || currentUser.role !== "driver") {
+
+            throw new Error("Invalid driver session.");
+
+        }
+
+        loginSection.classList.add("hidden");
+
+        dashboardSection.classList.remove("hidden");
+
+        document.getElementById("driverName").textContent =
+            currentUser.name || "-";
+
+        document.getElementById("driverEmail").textContent =
+            currentUser.email || "-";
+
+        await loadParcels();
+
+    } catch (error) {
+
+        token = "";
+
+        currentUser = null;
+
+        localStorage.removeItem("driverToken");
+
+        loginSection.classList.remove("hidden");
+
+        dashboardSection.classList.add("hidden");
+
+        document.getElementById("loginMessage").textContent =
+            "Please login again.";
+
+    }
+
+}
+
+
+// =====================================
+// PAGE START
+// =====================================
+
+restoreSession();
+
+</script>
+
+</body>
+</html>
