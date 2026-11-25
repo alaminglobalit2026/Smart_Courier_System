@@ -1,24 +1,244 @@
+
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
 
   // =====================================
-  // ADMIN LOGIN - BACKEND CONNECTION
+  // API CONFIGURATION
   // =====================================
-
   const API_BASE = "https://smart-courier-system.onrender.com";
   const TOKEN_KEY = "smartcourier_admin_token";
 
-  const loginForm = $("adminLoginForm");
-  const loginScreen = $("loginScreen");
-  const appShell = $("appShell");
-  const loginError = $("loginError");
-  const loginButton = $("adminLoginBtn");
+  // Login session belongs to this browser tab
+  localStorage.removeItem(TOKEN_KEY);
+  let token = sessionStorage.getItem(TOKEN_KEY) || "";
 
-  async function adminLogin(email, password) {
+  let parcels = [];
+  let drivers = [];
+
+  let editingParcelId = null;
+  let editingDriverId = null;
+
+  const notificationDefaults = {
+    smsEnabled: false,
+    emailEnabled: false,
+    smsProvider: "twilio",
+    emailProvider: "sendgrid",
+    notifyPending: true,
+    notifyTransit: true,
+    notifyDelivered: true,
+    notifyFailed: true
+  };
+
+  let notificationSettings = {
+    ...notificationDefaults,
+    ...readStore("smartcourier_notifications_v1", {})
+  };
+
+  // =====================================
+  // COMMON FUNCTIONS
+  // =====================================
+  function readStore(key, fallback) {
     try {
-      loginButton.disabled = true;
-      loginButton.textContent = "Logging in...";
-      loginError.textContent = "";
+      return JSON.parse(localStorage.getItem(key)) || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[c]);
+  }
+
+  function initials(name) {
+    return String(name || "?")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(x => x[0])
+      .join("")
+      .toUpperCase();
+  }
+
+  function toast(message) {
+    const el = $("toast");
+
+    if (!el) {
+      alert(message);
+      return;
+    }
+
+    el.textContent = message;
+    el.classList.add("show");
+
+    clearTimeout(toast.timer);
+
+    toast.timer = setTimeout(() => {
+      el.classList.remove("show");
+    }, 2600);
+  }
+
+  function bind(id, event, callback) {
+    const element = $(id);
+    if (element) element.addEventListener(event, callback);
+  }
+
+  function statusLabel(status) {
+    const labels = {
+      pending: "Pending",
+      picked_up: "Picked Up",
+      in_transit: "In Transit",
+      out_for_delivery: "Out for Delivery",
+      delivered: "Delivered",
+      cancelled: "Cancelled"
+    };
+
+    return labels[status] || status || "Unknown";
+  }
+
+  function statusClass(status) {
+    return "status-" + String(statusLabel(status))
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+  }
+
+  function badge(status) {
+    return `<span class="status-badge ${statusClass(status)}">${esc(statusLabel(status))}</span>`;
+  }
+
+  function dateFormat(date) {
+    return date ? new Date(date).toLocaleDateString() : "—";
+  }
+
+  async function api(path, options = {}) {
+    const headers = {
+      ...(options.headers || {})
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    if (options.body) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers
+    });
+
+    let data = {};
+
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error("Invalid server response.");
+    }
+
+    if (response.status === 401) {
+      logout(false);
+      throw new Error("Session expired. Please login again.");
+    }
+
+    if (!response.ok || data.success === false) {
+      throw new Error(data.message || "Server request failed.");
+    }
+
+    return data;
+  }
+
+  function openModal(id) {
+    if ($(id)) $(id).classList.add("open");
+  }
+
+  function closeModal(id) {
+    if ($(id)) $(id).classList.remove("open");
+  }
+
+  document.querySelectorAll("[data-close]").forEach(button => {
+    button.addEventListener("click", () => {
+      closeModal(button.dataset.close);
+    });
+  });
+
+  document.querySelectorAll(".modal-backdrop").forEach(backdrop => {
+    backdrop.addEventListener("click", e => {
+      if (e.target === backdrop) {
+        closeModal(backdrop.id);
+      }
+    });
+  });
+
+  // =====================================
+  // ADMIN LOGIN AND SCREEN CONTROL
+  // =====================================
+
+  function showApp() {
+    if ($("loginScreen")) {
+      $("loginScreen").style.display = "none";
+    }
+
+    if ($("appShell")) {
+      $("appShell").style.display = "block";
+    }
+
+    // Show the selected screen only after session decision
+    document.documentElement.classList.add("auth-ready");
+  }
+
+  function showLogin() {
+    if ($("loginScreen")) {
+      $("loginScreen").style.display = "flex";
+    }
+
+    if ($("appShell")) {
+      $("appShell").style.display = "none";
+    }
+
+    // Show login only after session decision
+    document.documentElement.classList.add("auth-ready");
+  }
+
+  function logout(showMessage = true) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    token = "";
+
+    showLogin();
+
+    if (showMessage) {
+      toast("Logged out successfully.");
+    }
+  }
+
+  bind("adminLoginForm", "submit", async e => {
+    e.preventDefault();
+
+    const email = $("adminEmail")?.value.trim();
+    const password = $("adminPassword")?.value;
+
+    const errorElement = $("loginError");
+    const button = $("adminLoginBtn");
+
+    if (!email || !password) {
+      if (errorElement) {
+        errorElement.textContent = "Enter email and password.";
+      }
+      return;
+    }
+
+    try {
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Logging in...";
+      }
+
+      if (errorElement) errorElement.textContent = "";
 
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
@@ -38,10 +258,8 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error("This account is not an Admin account.");
       }
 
-      localStorage.setItem(TOKEN_KEY, data.token);
-
-      loginScreen.style.display = "none";
-      appShell.style.display = "block";
+      token = data.token;
+      sessionStorage.setItem(TOKEN_KEY, token);
 
       if ($("sidebarAdminName")) {
         $("sidebarAdminName").textContent = data.user.name;
@@ -50,50 +268,45 @@ document.addEventListener("DOMContentLoaded", () => {
       if ($("topAdminName")) {
         $("topAdminName").textContent = data.user.name;
       }
+
+      showApp();
+
+      await loadAllData();
 
       toast("Admin login successful!");
 
     } catch (error) {
-      loginError.textContent = error.message;
+      if (errorElement) {
+        errorElement.textContent = error.message;
+      }
     } finally {
-      loginButton.disabled = false;
-      loginButton.textContent = "Login";
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Login to Dashboard";
+      }
     }
-  }
+  });
 
-  loginForm.addEventListener("submit", function(e) {
-    e.preventDefault();
+  bind("logoutBtn", "click", () => logout());
 
-    const email = $("adminEmail").value.trim();
-    const password = $("adminPassword").value;
+  // Settings page logout button
+  bind("clearDataBtn", "click", () => logout());
 
-    if (!email || !password) {
-      loginError.textContent = "Please enter email and password.";
+  // =====================================
+  // SESSION RESTORE
+  // =====================================
+  async function restoreSession() {
+    // No token: show login screen
+    if (!token) {
+      showLogin();
       return;
     }
 
-    adminLogin(email, password);
-  });
+    try {
+      // Verify saved token with backend first
+      const data = await api("/api/admin/dashboard");
 
-  // Restore existing login session
-  const savedToken = localStorage.getItem(TOKEN_KEY);
-
-  if (savedToken) {
-    fetch(`${API_BASE}/api/admin/dashboard`, {
-      headers: {
-        Authorization: `Bearer ${savedToken}`
-      }
-    })
-    .then(async response => {
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error("Session expired");
-      }
-
-      loginScreen.style.display = "none";
-      appShell.style.display = "block";
-
+      // Token valid: show dashboard
       if ($("sidebarAdminName")) {
         $("sidebarAdminName").textContent = data.user.name;
       }
@@ -101,568 +314,1201 @@ document.addEventListener("DOMContentLoaded", () => {
       if ($("topAdminName")) {
         $("topAdminName").textContent = data.user.name;
       }
-    })
-    .catch(() => {
-      localStorage.removeItem(TOKEN_KEY);
-      loginScreen.style.display = "flex";
-      appShell.style.display = "none";
-    });
+
+      showApp();
+
+      await loadAllData();
+
+    } catch (error) {
+      console.error("Session restore:", error.message);
+
+      sessionStorage.removeItem(TOKEN_KEY);
+      token = "";
+
+      showLogin();
+    }
   }
 
-  // Logout
-  if ($("logoutBtn")) {
-    $("logoutBtn").addEventListener("click", () => {
-      localStorage.removeItem(TOKEN_KEY);
-      location.reload();
-    });
+  // =====================================
+  // LOAD DATABASE DATA
+  // =====================================
+  async function loadAllData() {
+    try {
+      const results = await Promise.all([
+        api("/api/admin/dashboard"),
+        api("/api/admin/parcels"),
+        api("/api/admin/drivers")
+      ]);
+
+      const dashboard = results[0];
+      const parcelData = results[1];
+      const driverData = results[2];
+
+      parcels = parcelData.parcels || [];
+      drivers = driverData.drivers || [];
+
+      if ($("sidebarAdminName")) {
+        $("sidebarAdminName").textContent = dashboard.user.name;
+      }
+
+      if ($("topAdminName")) {
+        $("topAdminName").textContent = dashboard.user.name;
+      }
+
+      renderAll();
+
+      console.log("Dashboard loaded:", dashboard);
+      console.log("Parcels loaded:", parcels.length);
+      console.log("Drivers loaded:", drivers.length);
+
+    } catch (error) {
+      console.error("Data loading error:", error);
+      toast(error.message);
+    }
   }
 
-  const STORE_PARCELS = "smartcouriersystem_parcels_v1";
-  const STORE_DRIVERS = "smartcouriersystem_drivers_v1";
-  let parcels = readStore(STORE_PARCELS, []);
-  let drivers = readStore(STORE_DRIVERS, []);
-  let editingDriverId = null;
-  let editingTrackingId = null;
+  bind("refreshDataBtn", "click", async () => {
+    await loadAllData();
+    toast("Database data refreshed.");
+  });
 
-  function readStore(key, fallback) {
-    try { return JSON.parse(localStorage.getItem(key)) || fallback; }
-    catch { return fallback; }
-  }
-  function save() {
-    localStorage.setItem(STORE_PARCELS, JSON.stringify(parcels));
-    localStorage.setItem(STORE_DRIVERS, JSON.stringify(drivers));
-  }
-  function esc(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-    })[c]);
-  }
-  function initials(name) {
-    return String(name || "?").trim().split(/\s+/).slice(0,2).map(x => x[0]).join("").toUpperCase();
-  }
-  function statusClass(status) {
-    return "status-" + String(status).toLowerCase().replace(/\s+/g, "-");
-  }
-  function toast(message) {
-    const el = $("toast");
-    el.textContent = message;
-    el.classList.add("show");
-    clearTimeout(toast.timer);
-    toast.timer = setTimeout(() => el.classList.remove("show"), 2600);
-  }
-  function openModal(id) { $(id).classList.add("open"); }
-  function closeModal(id) { $(id).classList.remove("open"); }
-
-  document.querySelectorAll("[data-close]").forEach(btn =>
-    btn.addEventListener("click", () => closeModal(btn.dataset.close))
-  );
-  document.querySelectorAll(".modal-backdrop").forEach(backdrop =>
-    backdrop.addEventListener("click", e => {
-      if (e.target === backdrop) closeModal(backdrop.id);
-    })
-  );
-
+  // =====================================
+  // NAVIGATION
+  // =====================================
   function goTo(page) {
-    document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === page));
-    document.querySelectorAll(".nav-link").forEach(a => a.classList.toggle("active", a.dataset.page === page));
-    const active = document.querySelector(`.nav-link[data-page="${page}"]`);
-    $("breadcrumbPage").textContent = active ? active.textContent.trim().replace(/\s+\d+$/, "") : "Dashboard";
-    $("sidebar").classList.remove("open");
+    document.querySelectorAll(".page").forEach(p => {
+      p.classList.toggle("active", p.id === page);
+    });
+
+    document.querySelectorAll(".nav-link").forEach(a => {
+      a.classList.toggle("active", a.dataset.page === page);
+    });
+
+    const active = document.querySelector(
+      `.nav-link[data-page="${page}"]`
+    );
+
+    if ($("breadcrumbPage")) {
+      $("breadcrumbPage").textContent = active
+        ? active.textContent.trim().replace(/\s+\d+$/, "")
+        : "Dashboard";
+    }
+
+    if ($("sidebar")) $("sidebar").classList.remove("open");
+
     if (page === "reports") renderReports();
   }
-  document.querySelectorAll(".nav-link").forEach(a => a.addEventListener("click", e => {
-    e.preventDefault(); goTo(a.dataset.page);
-  }));
-  document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => goTo(b.dataset.goto)));
-  $("mobileMenu").addEventListener("click", () => $("sidebar").classList.toggle("open"));
-  $("helpBtn").addEventListener("click", () => toast("Help center will be connected in a future version."));
-  $("notificationBtn").addEventListener("click", () => toast("You are all caught up!"));
 
+  document.querySelectorAll(".nav-link").forEach(a => {
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      goTo(a.dataset.page);
+    });
+  });
+
+  document.querySelectorAll("[data-goto]").forEach(button => {
+    button.addEventListener("click", () => {
+      goTo(button.dataset.goto);
+    });
+  });
+
+  bind("mobileMenu", "click", () => {
+    if ($("sidebar")) $("sidebar").classList.toggle("open");
+  });
+
+  bind("helpBtn", "click", () => {
+    toast("Help center will be connected in a future version.");
+  });
+
+  bind("notificationBtn", "click", () => {
+    toast("You are all caught up!");
+  });
+
+  // =====================================
+  // PARCEL DRIVER OPTIONS
+  // =====================================
   function driverOptions() {
-    $("parcelDriver").innerHTML = '<option value="">Unassigned</option>' +
-      drivers.map(d => `<option value="${esc(d.name)}">${esc(d.name)}</option>`).join("");
+    if (!$("parcelDriver")) return;
+
+    $("parcelDriver").innerHTML =
+      '<option value="">Unassigned</option>' +
+      drivers.map(d =>
+        `<option value="${esc(d._id)}">${esc(d.name)}</option>`
+      ).join("");
   }
+
+  // =====================================
+  // CREATE / EDIT PARCEL MODAL
+  // =====================================
   function showParcelModal() {
-    editingTrackingId = null;
+    if (!$("parcelForm")) return;
+
+    editingParcelId = null;
+
     $("parcelForm").reset();
     driverOptions();
-    $("parcelModalTitle").textContent = "Create a shipment";
-    $("parcelModalEyebrow").textContent = "NEW SHIPMENT";
-    $("parcelSaveBtn").textContent = "Save shipment";
-    $("trackingId").disabled = false;
+
+    if ($("parcelDriver")) {
+      $("parcelDriver").disabled = false;
+    }
+
+    if ($("parcelModalTitle")) {
+      $("parcelModalTitle").textContent = "Create a shipment";
+    }
+
+    if ($("parcelModalEyebrow")) {
+      $("parcelModalEyebrow").textContent = "NEW SHIPMENT";
+    }
+
+    if ($("parcelSaveBtn")) {
+      $("parcelSaveBtn").textContent = "Save shipment";
+    }
+
+    if ($("trackingId")) {
+      $("trackingId").value = "Auto generated";
+      $("trackingId").disabled = true;
+    }
+
     openModal("parcelModal");
   }
 
-  function showEditParcelModal(id) {
-    const parcel = parcels.find(p => p.trackingId === id);
-    if (!parcel) return;
+  function showParcelEditModal(id) {
+    const p = parcels.find(item => item._id === id);
 
-    editingTrackingId = id;
-    $("parcelForm").reset();
-    driverOptions();
-    $("trackingId").value = parcel.trackingId;
-    $("customerName").value = parcel.customer || "";
-    $("customerPhone").value = parcel.phone || "";
-    $("destination").value = parcel.destination || "";
-    $("parcelDriver").value = parcel.driver || "";
-    $("parcelModalTitle").textContent = "Edit shipment";
-    $("parcelModalEyebrow").textContent = "UPDATE SHIPMENT";
-    $("parcelSaveBtn").textContent = "Update shipment";
-    // Keep the tracking ID stable so other records and tracking links remain consistent.
-    $("trackingId").disabled = true;
-    openModal("parcelModal");
-  }
-
-  function showParcelDetails(id) {
-    const p = parcels.find(item => item.trackingId === id);
-    if (!p) return;
-    $("viewParcelContent").innerHTML = `
-      <div class="tracking-result-card">
-        <h3>Shipment ${esc(p.trackingId)}</h3>
-        <p><b>Customer:</b> ${esc(p.customer)}</p>
-        <p><b>Phone:</b> ${esc(p.phone)}</p>
-        <p><b>Destination:</b> ${esc(p.destination)}</p>
-        <p><b>Assigned driver:</b> ${esc(p.driver || "Unassigned")}</p>
-        <p><b>Status:</b> ${badge(p.status)}</p>
-        <p><b>Created:</b> ${p.createdAt ? esc(new Date(p.createdAt).toLocaleString()) : "—"}</p>
-      </div>`;
-    openModal("viewParcelModal");
-  }
-  document.querySelectorAll("[data-open-parcel]").forEach(b => b.addEventListener("click", showParcelModal));
-  $("quickAddBtn").addEventListener("click", showParcelModal);
-
-  $("parcelForm").addEventListener("submit", e => {
-    e.preventDefault();
-    const trackingId = $("trackingId").value.trim();
-    const customer = $("customerName").value.trim();
-    const phone = $("customerPhone").value.trim();
-    const destination = $("destination").value.trim();
-    const driver = $("parcelDriver").value;
-    const existing = editingTrackingId
-      ? parcels.find(p => p.trackingId === editingTrackingId)
-      : null;
-
-    const duplicate = parcels.some(p =>
-      p !== existing && p.trackingId.toLowerCase() === trackingId.toLowerCase()
-    );
-    if (duplicate) {
-      toast("That tracking ID already exists.");
+    if (!p) {
+      toast("Parcel not found.");
       return;
     }
 
-    if (existing) {
-      // Preserve delivery status and creation date while updating editable fields.
-      existing.customer = customer;
-      existing.phone = phone;
-      existing.destination = destination;
-      existing.driver = driver;
-      editingTrackingId = null;
-      toast("Shipment updated successfully.");
-    } else {
-      parcels.unshift({
-        trackingId,
-        customer,
-        phone,
-        destination,
-        driver,
-        status: "Pending",
-        createdAt: new Date().toISOString()
-      });
-      toast("Shipment created successfully.");
+    editingParcelId = p._id;
+
+    $("parcelForm").reset();
+    driverOptions();
+
+    if ($("trackingId")) {
+      $("trackingId").value = p.trackingNumber || "";
+      $("trackingId").disabled = true;
     }
 
-    save();
-    renderAll();
-    closeModal("parcelModal");
-    $("trackingId").disabled = false;
+    $("senderName").value = p.senderName || "";
+    $("senderPhone").value = p.senderPhone || "";
+    $("receiverName").value = p.receiverName || "";
+    $("receiverPhone").value = p.receiverPhone || "";
+    $("pickupAddress").value = p.pickupAddress || "";
+    $("deliveryAddress").value = p.deliveryAddress || "";
+    $("parcelDescription").value = p.parcelDescription || "";
+    $("weightKg").value = p.weightKg ?? "";
+
+    if ($("parcelDriver")) {
+      const currentDriverId =
+        p.assignedDriver?._id ||
+        p.assignedDriver ||
+        "";
+
+      $("parcelDriver").value = currentDriverId;
+      $("parcelDriver").disabled = false;
+    }
+
+    if ($("parcelModalTitle")) {
+      $("parcelModalTitle").textContent = "Edit shipment";
+    }
+
+    if ($("parcelModalEyebrow")) {
+      $("parcelModalEyebrow").textContent = "UPDATE SHIPMENT";
+    }
+
+    if ($("parcelSaveBtn")) {
+      $("parcelSaveBtn").textContent = "Update shipment";
+    }
+
+    openModal("parcelModal");
+  }
+
+  document.querySelectorAll("[data-open-parcel]").forEach(button => {
+    button.addEventListener("click", showParcelModal);
   });
 
- 
-function showDriverModal() {
-  editingDriverId = null;
-  $("driverForm").reset();
-  $("driverModalTitle").textContent = "Add a driver";
-  $("driverSaveBtn").textContent = "Add driver";
-  openModal("driverModal");
-}
+  bind("quickAddBtn", "click", showParcelModal);
 
-$("addDriverBtn").addEventListener("click", showDriverModal);
-$("emptyAddDriver").addEventListener("click", showDriverModal);
+  // =====================================
+  // SAVE / UPDATE PARCEL
+  // =====================================
+  bind("parcelForm", "submit", async e => {
+    e.preventDefault();
 
-// Edit and Delete button actions
-$("driverGrid").addEventListener("click", e => {
-  const btn = e.target.closest("button[data-action]");
-  if (!btn) return;
+    try {
+      const parcelData = {
+        senderName: $("senderName")?.value.trim(),
+        senderPhone: $("senderPhone")?.value.trim(),
+        receiverName: $("receiverName")?.value.trim(),
+        receiverPhone: $("receiverPhone")?.value.trim(),
+        pickupAddress: $("pickupAddress")?.value.trim(),
+        deliveryAddress: $("deliveryAddress")?.value.trim(),
+        parcelDescription: $("parcelDescription")?.value.trim(),
+        weightKg: Number($("weightKg")?.value)
+      };
 
-  const id = btn.dataset.id;
-  const driver = drivers.find(d => d.id === id);
-  if (!driver) return;
+      const driverId = $("parcelDriver")?.value;
 
-if (btn.dataset.action === "view") {
-  $("viewDriverName").value = driver.name;
-  $("viewDriverPhone").value = driver.phone;
-  $("viewDriverVehicle").value = driver.vehicle;
+      if (
+        !parcelData.senderName ||
+        !parcelData.senderPhone ||
+        !parcelData.receiverName ||
+        !parcelData.receiverPhone ||
+        !parcelData.pickupAddress ||
+        !parcelData.deliveryAddress ||
+        !parcelData.parcelDescription ||
+        !Number.isFinite(parcelData.weightKg) ||
+        parcelData.weightKg < 0.1
+      ) {
+        toast("Please complete all required fields. Weight must be at least 0.1 KG.");
+        return;
+      }
 
-  const activeShipments = parcels.filter(
-    p => p.driver === driver.name &&
-    ["Pending", "In Transit"].includes(p.status)
-  ).length;
+      const button = $("parcelSaveBtn");
 
-  $("viewDriverShipments").value = activeShipments;
+      if (button) {
+        button.disabled = true;
+        button.textContent = editingParcelId ? "Updating..." : "Saving...";
+      }
 
-  openModal("viewDriverModal");
-}
+      if (editingParcelId) {
+        const currentParcel = parcels.find(
+          p => p._id === editingParcelId
+        );
 
+        if (!currentParcel) {
+          throw new Error("Parcel not found.");
+        }
 
-  if (btn.dataset.action === "edit") {
-    editingDriverId = id;
+        await api(`/api/admin/parcels/${encodeURIComponent(editingParcelId)}`, {
+          method: "PUT",
+          body: JSON.stringify(parcelData)
+        });
 
-    $("driverName").value = driver.name;
-    $("driverPhone").value = driver.phone;
-    $("driverVehicle").value = driver.vehicle;
-    $("driverModalTitle").textContent = "Edit driver";
-    $("driverSaveBtn").textContent = "Save changes";
+        const currentDriverId =
+          currentParcel.assignedDriver?._id ||
+          currentParcel.assignedDriver ||
+          "";
+
+        if (driverId !== currentDriverId) {
+          if (driverId) {
+            await api("/api/admin/assign-parcel", {
+              method: "PUT",
+              body: JSON.stringify({
+                trackingNumber: currentParcel.trackingNumber,
+                driverId
+              })
+            });
+          }
+        }
+
+        editingParcelId = null;
+
+        closeModal("parcelModal");
+        $("parcelForm").reset();
+
+        if ($("parcelDriver")) {
+          $("parcelDriver").disabled = false;
+        }
+
+        await loadAllData();
+
+        toast("Parcel updated successfully!");
+        return;
+      }
+
+      const result = await api("/api/parcels/book", {
+        method: "POST",
+        body: JSON.stringify(parcelData)
+      });
+
+      const trackingNumber = result.trackingNumber ||
+        result.parcel?.trackingNumber;
+
+      if (driverId && trackingNumber) {
+        try {
+          await api("/api/admin/assign-parcel", {
+            method: "PUT",
+            body: JSON.stringify({
+              trackingNumber,
+              driverId
+            })
+          });
+
+          toast("Parcel created and driver assigned!");
+
+        } catch (assignError) {
+          toast("Parcel created, but driver assignment failed: " + assignError.message);
+        }
+      } else {
+        toast("Parcel created successfully!");
+      }
+
+      closeModal("parcelModal");
+      $("parcelForm").reset();
+
+      await loadAllData();
+
+      if (trackingNumber) {
+        alert("New Tracking Number: " + trackingNumber);
+      }
+
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      if ($("parcelSaveBtn")) {
+        $("parcelSaveBtn").disabled = false;
+        $("parcelSaveBtn").textContent =
+          editingParcelId ? "Update shipment" : "Save shipment";
+      }
+    }
+  });
+
+  // =====================================
+  // PARCEL DETAILS
+  // =====================================
+  function showParcelDetails(id) {
+    const p = parcels.find(item => item.trackingNumber === id);
+
+    if (!p) return;
+
+    if ($("viewParcelContent")) {
+      $("viewParcelContent").innerHTML = `
+        <div class="tracking-result-card">
+          <h3>Shipment ${esc(p.trackingNumber)}</h3>
+          <p><b>Sender:</b> ${esc(p.senderName)}</p>
+          <p><b>Sender Phone:</b> ${esc(p.senderPhone)}</p>
+          <p><b>Receiver:</b> ${esc(p.receiverName)}</p>
+          <p><b>Receiver Phone:</b> ${esc(p.receiverPhone)}</p>
+          <p><b>Pickup:</b> ${esc(p.pickupAddress)}</p>
+          <p><b>Destination:</b> ${esc(p.deliveryAddress)}</p>
+          <p><b>Description:</b> ${esc(p.parcelDescription)}</p>
+          <p><b>Weight:</b> ${esc(p.weightKg)} kg</p>
+          <p><b>Assigned Driver:</b> ${esc(p.assignedDriver?.name || "Unassigned")}</p>
+          <p><b>Status:</b> ${badge(p.status)}</p>
+          <p><b>Created:</b> ${esc(new Date(p.createdAt).toLocaleString())}</p>
+        </div>
+      `;
+    }
+
+    openModal("viewParcelModal");
+  }
+
+  // =====================================
+  // RENDER DASHBOARD METRICS
+  // =====================================
+  function renderMetrics() {
+    const total = parcels.length;
+
+    const count = status =>
+      parcels.filter(p => p.status === status).length;
+
+    const pending = count("pending");
+    const transit = count("in_transit") + count("picked_up") +
+      count("out_for_delivery");
+    const delivered = count("delivered");
+    const failed = count("cancelled");
+
+    if ($("metricTotal")) $("metricTotal").textContent = total;
+    if ($("metricTransit")) $("metricTransit").textContent = transit;
+    if ($("metricDelivered")) $("metricDelivered").textContent = delivered;
+    if ($("metricIssues")) $("metricIssues").textContent = failed;
+
+    if ($("navParcelCount")) $("navParcelCount").textContent = total;
+    if ($("donutTotal")) $("donutTotal").textContent = total;
+
+    if ($("breakDelivered")) $("breakDelivered").textContent = delivered;
+    if ($("breakTransit")) $("breakTransit").textContent = transit;
+    if ($("breakPending")) $("breakPending").textContent = pending;
+    if ($("breakFailed")) $("breakFailed").textContent = failed;
+
+    const pct = n => total ? n / total * 100 : 0;
+
+    let start = 0;
+
+    const colors = [
+      ["#19b28d", delivered],
+      ["#6492e8", transit],
+      ["#eab04d", pending],
+      ["#e4777d", failed]
+    ];
+
+    const segments = colors.map(([color, number]) => {
+      const from = start;
+      start += pct(number);
+      return `${color} ${from}% ${start}%`;
+    });
+
+    if ($("statusDonut")) {
+      $("statusDonut").style.background = total
+        ? `conic-gradient(${segments.join(",")})`
+        : "#edf1f5";
+    }
+  }
+
+  // =====================================
+  // TABLE HELPERS
+  // =====================================
+  function customerCell(name) {
+    return `<span class="customer-cell">
+      <i class="tiny-avatar">${esc(initials(name))}</i>
+      ${esc(name)}
+    </span>`;
+  }
+
+  function driverName(p) {
+    return p.assignedDriver?.name || "Unassigned";
+  }
+
+  function parcelTracking(p) {
+    return p.trackingNumber || "";
+  }
+
+  // =====================================
+  // RECENT SHIPMENTS
+  // =====================================
+  function renderRecent() {
+    const list = parcels.slice(0, 5);
+
+    if (!$("recentRows")) return;
+
+    $("recentRows").innerHTML = list.map(p => `
+      <tr>
+        <td class="tracking-code">${esc(parcelTracking(p))}</td>
+        <td>${customerCell(p.receiverName)}</td>
+        <td>${esc(p.deliveryAddress)}</td>
+        <td>${esc(driverName(p))}</td>
+        <td>${badge(p.status)}</td>
+        <td>
+          <button class="row-action"
+            data-track="${esc(parcelTracking(p))}">View</button>
+        </td>
+      </tr>
+    `).join("");
+
+    if ($("recentEmpty")) {
+      $("recentEmpty").classList.toggle("show", list.length === 0);
+    }
+
+    const table = $("recentRows").closest(".table-scroll");
+    if (table) table.style.display = list.length ? "" : "none";
+  }
+
+  bind("recentRows", "click", e => {
+    const button = e.target.closest("[data-track]");
+    if (!button) return;
+
+    const id = button.dataset.track;
+
+    goTo("tracking");
+
+    if ($("trackingInput")) $("trackingInput").value = id;
+    if ($("trackingPhone")) $("trackingPhone").value = "";
+
+    toast("Enter receiver phone number to track this parcel.");
+  });
+
+  // =====================================
+  // PARCEL TABLE WITH VIEW / EDIT / DELETE
+  // =====================================
+  function renderParcels() {
+    if (!$("parcelRows")) return;
+
+    const query = $("parcelSearch")?.value.trim().toLowerCase() || "";
+    const filter = $("statusFilter")?.value || "all";
+
+    const list = parcels.filter(p => {
+      const matchesStatus =
+        filter === "all" ||
+        p.status === filter ||
+        statusLabel(p.status) === filter;
+
+      const searchText = [
+        p.trackingNumber,
+        p.senderName,
+        p.receiverName,
+        p.receiverPhone,
+        p.deliveryAddress
+      ].join(" ").toLowerCase();
+
+      return matchesStatus && searchText.includes(query);
+    });
+
+    $("parcelRows").innerHTML = list.map(p => `
+      <tr>
+        <td class="tracking-code">${esc(parcelTracking(p))}</td>
+        <td>${customerCell(p.receiverName)}</td>
+        <td>${esc(p.receiverPhone)}</td>
+        <td>${esc(p.deliveryAddress)}</td>
+        <td>${esc(driverName(p))}</td>
+        <td>${badge(p.status)}</td>
+        <td class="parcel-actions">
+          <button class="row-action"
+            data-parcel-action="view"
+            data-id="${esc(p._id)}">View</button>
+
+          <button class="row-action"
+            data-parcel-action="edit"
+            data-id="${esc(p._id)}">Edit</button>
+
+          <button class="row-action"
+            data-parcel-action="delete"
+            data-id="${esc(p._id)}">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    if ($("parcelEmpty")) {
+      $("parcelEmpty").classList.toggle("show", list.length === 0);
+    }
+
+    const table = $("parcelRows").closest(".table-scroll");
+    if (table) table.style.display = list.length ? "" : "none";
+  }
+
+  bind("parcelSearch", "input", renderParcels);
+  bind("statusFilter", "change", renderParcels);
+
+  bind("parcelRows", "click", async e => {
+    const button = e.target.closest("[data-parcel-action]");
+    if (!button) return;
+
+    const id = button.dataset.id;
+    const action = button.dataset.parcelAction;
+
+    if (action === "view") {
+      const parcel = parcels.find(p => p._id === id);
+
+      if (parcel) {
+        showParcelDetails(parcel.trackingNumber);
+      }
+
+      return;
+    }
+
+    if (action === "edit") {
+      showParcelEditModal(id);
+      return;
+    }
+
+    if (action === "delete") {
+      const parcel = parcels.find(p => p._id === id);
+      if (!parcel) return;
+
+      const confirmed = confirm(
+        `Are you sure you want to delete parcel ${parcel.trackingNumber}?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        await api(`/api/admin/parcels/${encodeURIComponent(id)}`, {
+          method: "DELETE"
+        });
+
+        await loadAllData();
+
+        toast("Parcel deleted successfully!");
+
+      } catch (error) {
+        toast(error.message);
+      }
+    }
+  });
+
+  // =====================================
+  // DELIVERY TABLE
+  // =====================================
+  function renderDeliveries() {
+    if (!$("deliveryRows")) return;
+
+    $("deliveryRows").innerHTML = parcels.map(p => `
+      <tr>
+        <td class="tracking-code">${esc(parcelTracking(p))}</td>
+        <td>${esc(p.receiverName)}</td>
+        <td>${esc(driverName(p))}</td>
+        <td>${badge(p.status)}</td>
+        <td>${esc(dateFormat(p.updatedAt))}</td>
+      </tr>
+    `).join("");
+
+    if ($("deliveryEmpty")) {
+      $("deliveryEmpty").classList.toggle("show", parcels.length === 0);
+    }
+
+    const table = $("deliveryRows").closest(".table-scroll");
+    if (table) table.style.display = parcels.length ? "" : "none";
+  }
+
+  // =====================================
+  // CREATE / EDIT DRIVER
+  // =====================================
+  function showDriverModal() {
+    if (!$("driverForm")) return;
+
+    editingDriverId = null;
+
+    $("driverForm").reset();
+
+    if ($("driverModalTitle")) {
+      $("driverModalTitle").textContent = "Add a driver";
+    }
+
+    if ($("driverSaveBtn")) {
+      $("driverSaveBtn").textContent = "Add driver";
+    }
+
+    if ($("driverPassword")) {
+      $("driverPassword").required = true;
+      $("driverPassword").placeholder = "Enter password";
+    }
 
     openModal("driverModal");
   }
 
-  if (btn.dataset.action === "delete") {
-    if (!confirm("Are you sure you want to delete this driver?")) return;
+  function showDriverEditModal(id) {
+    const driver = drivers.find(d => d._id === id);
 
-    parcels.forEach(p => {
-      if (p.driver === driver.name) p.driver = "";
-    });
-
-    drivers = drivers.filter(d => d.id !== id);
-
-    save();
-    renderAll();
-    toast("Driver deleted successfully.");
-  }
-});
-
-// Save new driver or update existing driver
-$("driverForm").addEventListener("submit", e => {
-  e.preventDefault();
-
-  const driverData = {
-    name: $("driverName").value.trim(),
-    phone: $("driverPhone").value.trim(),
-    vehicle: $("driverVehicle").value
-  };
-
-  const duplicateDriver = drivers.some(d =>
-    d.id !== editingDriverId &&
-    String(d.name).trim().toLowerCase() === driverData.name.toLowerCase()
-  );
-  if (duplicateDriver) {
-    toast("A driver with this name already exists.");
-    return;
-  }
-
-  if (editingDriverId) {
-    const driver = drivers.find(d => d.id === editingDriverId);
-
-    if (driver) {
-      const oldName = driver.name;
-      Object.assign(driver, driverData);
-
-      parcels.forEach(p => {
-        if (p.driver === oldName) p.driver = driverData.name;
-      });
+    if (!driver) {
+      toast("Driver not found.");
+      return;
     }
 
-    toast("Driver updated successfully.");
-  } else {
-    drivers.push({
-      id: (window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : String(Date.now())),
-      ...driverData
-    });
+    editingDriverId = driver._id;
 
-    toast("Driver added successfully.");
-  }
+    $("driverForm").reset();
 
-  editingDriverId = null;
-  save();
-  renderAll();
-  closeModal("driverModal");
-  $("driverModalTitle").textContent = "Add a driver";
-  $("driverSaveBtn").textContent = "Add driver";
-});
+    $("driverName").value = driver.name || "";
+    $("driverPhone").value = driver.phone || "";
+    $("driverEmail").value = driver.email || "";
 
+    if ($("driverPassword")) {
+      $("driverPassword").value = "";
+      $("driverPassword").required = false;
+      $("driverPassword").placeholder =
+        "Leave blank to keep current password";
+    }
 
-  function renderMetrics() {
-    const total = parcels.length;
-    const count = status => parcels.filter(p => p.status === status).length;
-    const transit = count("In Transit"), delivered = count("Delivered"), pending = count("Pending"), failed = count("Failed");
-    $("metricTotal").textContent = total;
-    $("metricTransit").textContent = transit;
-    $("metricDelivered").textContent = delivered;
-    $("metricIssues").textContent = failed;
-    $("navParcelCount").textContent = total;
-    $("donutTotal").textContent = total;
-    $("breakDelivered").textContent = delivered;
-    $("breakTransit").textContent = transit;
-    $("breakPending").textContent = pending;
-    $("breakFailed").textContent = failed;
-    const pct = n => total ? n / total * 100 : 0;
-    let start = 0;
-    const colors = [["#19b28d",delivered],["#6492e8",transit],["#eab04d",pending],["#e4777d",failed]];
-    const segments = colors.map(([color,n]) => {
-      const from = start; start += pct(n); return `${color} ${from}% ${start}%`;
-    });
-    $("statusDonut").style.background = total ? `conic-gradient(${segments.join(",")})` : "#edf1f5";
+    if ($("driverModalTitle")) {
+      $("driverModalTitle").textContent = "Edit driver";
+    }
+
+    if ($("driverSaveBtn")) {
+      $("driverSaveBtn").textContent = "Update driver";
+    }
+
+    openModal("driverModal");
   }
 
-  function customerCell(name) {
-    return `<span class="customer-cell"><i class="tiny-avatar">${esc(initials(name))}</i>${esc(name)}</span>`;
+  bind("addDriverBtn", "click", showDriverModal);
+  bind("emptyAddDriver", "click", showDriverModal);
+
+  // =====================================
+  // SAVE / UPDATE DRIVER
+  // =====================================
+  bind("driverForm", "submit", async e => {
+    e.preventDefault();
+
+    try {
+      const driverData = {
+        name: $("driverName")?.value.trim(),
+        email: $("driverEmail")?.value.trim(),
+        phone: $("driverPhone")?.value.trim()
+      };
+
+      const password = $("driverPassword")?.value || "";
+
+      if (!driverData.name || !driverData.email || !driverData.phone) {
+        toast("Please complete all required driver fields.");
+        return;
+      }
+
+      const button = $("driverSaveBtn");
+
+      if (editingDriverId) {
+        if (password && password.length < 8) {
+          toast("Password must be at least 8 characters.");
+          return;
+        }
+
+        if (password) {
+          driverData.password = password;
+        }
+
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Updating...";
+        }
+
+        await api(`/api/admin/drivers/${encodeURIComponent(editingDriverId)}`, {
+          method: "PUT",
+          body: JSON.stringify(driverData)
+        });
+
+        editingDriverId = null;
+
+        closeModal("driverModal");
+        $("driverForm").reset();
+
+        await loadAllData();
+
+        toast("Driver updated successfully!");
+
+      } else {
+        if (!password) {
+          toast("Driver password is required.");
+          return;
+        }
+
+        if (password.length < 8) {
+          toast("Driver password must be at least 8 characters.");
+          return;
+        }
+
+        driverData.password = password;
+
+        if (button) {
+          button.disabled = true;
+          button.textContent = "Creating...";
+        }
+
+        await api("/api/admin/drivers", {
+          method: "POST",
+          body: JSON.stringify(driverData)
+        });
+
+        closeModal("driverModal");
+        $("driverForm").reset();
+
+        await loadAllData();
+
+        toast("Driver created successfully!");
+      }
+
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      if ($("driverSaveBtn")) {
+        $("driverSaveBtn").disabled = false;
+        $("driverSaveBtn").textContent =
+          editingDriverId ? "Update driver" : "Add driver";
+      }
+
+      if ($("driverPassword") && !editingDriverId) {
+        $("driverPassword").required = true;
+        $("driverPassword").placeholder = "Enter password";
+      }
+    }
+  });
+
+  // =====================================
+  // DRIVER CARDS WITH VIEW / EDIT / DELETE
+  // =====================================
+  function renderDrivers() {
+    if (!$("driverGrid")) return;
+
+    $("driverGrid").innerHTML = drivers.map(d => {
+      const activeShipments = parcels.filter(p =>
+        (p.assignedDriver?._id || p.assignedDriver) === d._id &&
+        !["delivered", "cancelled"].includes(p.status)
+      ).length;
+
+      return `
+        <article class="driver-card">
+          <div class="driver-card-head">
+            <div class="driver-avatar">${esc(initials(d.name))}</div>
+            <div>
+              <h3>${esc(d.name)}</h3>
+              <small>Delivery partner</small>
+            </div>
+          </div>
+
+          <div class="driver-meta">
+            <span>☎ &nbsp;${esc(d.phone)}</span>
+            <span>✉ &nbsp;${esc(d.email)}</span>
+            <span>↗ &nbsp;${activeShipments} active assigned shipment(s)</span>
+          </div>
+
+          <div class="driver-actions">
+            <button class="btn btn-secondary"
+              data-action="view"
+              data-id="${esc(d._id)}">View</button>
+
+            <button class="btn btn-secondary"
+              data-action="edit"
+              data-id="${esc(d._id)}">Edit</button>
+
+            <button class="btn btn-secondary"
+              data-action="delete"
+              data-id="${esc(d._id)}">Delete</button>
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    if ($("driverEmpty")) {
+      $("driverEmpty").classList.toggle("show", drivers.length === 0);
+    }
   }
-  function badge(status) {
-    return `<span class="status-badge ${statusClass(status)}">${esc(status)}</span>`;
-  }
-  function renderRecent() {
-    const list = parcels.slice(0,5);
-    $("recentRows").innerHTML = list.map(p => `<tr>
-      <td class="tracking-code">${esc(p.trackingId)}</td><td>${customerCell(p.customer)}</td>
-      <td>${esc(p.destination)}</td><td>${esc(p.driver || "Unassigned")}</td><td>${badge(p.status)}</td>
-      <td><button class="row-action" title="View tracking" data-track="${esc(p.trackingId)}">•••</button></td>
-    </tr>`).join("");
-    $("recentEmpty").classList.toggle("show", list.length === 0);
-    $("recentRows").closest(".table-scroll").style.display = list.length ? "" : "none";
-  }
-  function renderParcels() {
-    const query = $("parcelSearch").value.trim().toLowerCase();
-    const filter = $("statusFilter").value;
-    const list = parcels.filter(p =>
-      (filter === "all" || p.status === filter) &&
-      (p.trackingId.toLowerCase().includes(query) || p.customer.toLowerCase().includes(query) || p.destination.toLowerCase().includes(query))
-    );
-    $("parcelRows").innerHTML = list.map(p => `<tr>
-      <td class="tracking-code">${esc(p.trackingId)}</td><td>${customerCell(p.customer)}</td>
-      <td>${esc(p.phone)}</td><td>${esc(p.destination)}</td><td>${esc(p.driver || "Unassigned")}</td>
-      <td>${badge(p.status)}</td>
-      <td class="parcel-actions">
-        <button class="row-action" data-view="${esc(p.trackingId)}" title="View shipment" aria-label="View shipment">View</button>
-        <button class="row-action" data-edit="${esc(p.trackingId)}" title="Edit shipment" aria-label="Edit shipment">Edit</button>
-        <button class="row-action row-action-danger" data-delete="${esc(p.trackingId)}" title="Delete shipment" aria-label="Delete shipment">Delete</button>
-      </td>
-    </tr>`).join("");
-    $("parcelEmpty").classList.toggle("show", list.length === 0);
-    $("parcelRows").closest(".table-scroll").style.display = list.length ? "" : "none";
-  }
-  $("parcelSearch").addEventListener("input", renderParcels);
-  $("statusFilter").addEventListener("change", renderParcels);
-  $("parcelRows").addEventListener("click", e => {
-    const button = e.target.closest("button[data-view], button[data-edit], button[data-delete]");
+
+  bind("driverGrid", "click", async e => {
+    const button = e.target.closest("button[data-action]");
     if (!button) return;
 
-    const id = button.dataset.view || button.dataset.edit || button.dataset.delete;
-    if (button.dataset.view) {
-      showParcelDetails(id);
+    const id = button.dataset.id;
+    const action = button.dataset.action;
+
+    const driver = drivers.find(d => d._id === id);
+    if (!driver) return;
+
+    if (action === "view") {
+      if ($("viewDriverName")) {
+        $("viewDriverName").value = driver.name || "";
+      }
+
+      if ($("viewDriverPhone")) {
+        $("viewDriverPhone").value = driver.phone || "";
+      }
+
+      if ($("viewDriverEmail")) {
+        $("viewDriverEmail").value = driver.email || "";
+      }
+
+      const active = parcels.filter(p =>
+        (p.assignedDriver?._id || p.assignedDriver) === driver._id &&
+        !["delivered", "cancelled"].includes(p.status)
+      ).length;
+
+      if ($("viewDriverShipments")) {
+        $("viewDriverShipments").value = active;
+      }
+
+      openModal("viewDriverModal");
       return;
     }
-    if (button.dataset.edit) {
-      showEditParcelModal(id);
+
+    if (action === "edit") {
+      showDriverEditModal(id);
       return;
     }
-    if (button.dataset.delete && confirm(`Delete shipment ${id}?`)) {
-      parcels = parcels.filter(p => p.trackingId !== id);
-      save();
-      renderAll();
-      toast("Shipment deleted.");
+
+    if (action === "delete") {
+      const assignedParcels = parcels.filter(p =>
+        (p.assignedDriver?._id || p.assignedDriver) === driver._id
+      );
+
+      if (assignedParcels.length > 0) {
+        alert(
+          `This driver has ${assignedParcels.length} assigned parcel(s).\n\nPlease reassign those parcels to another driver before deleting this driver.`
+        );
+        return;
+      }
+
+      const confirmed = confirm(
+        `Are you sure you want to delete driver ${driver.name}?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        await api(`/api/admin/drivers/${encodeURIComponent(id)}`, {
+          method: "DELETE"
+        });
+
+        await loadAllData();
+
+        toast("Driver deleted successfully!");
+
+      } catch (error) {
+        toast(error.message);
+      }
     }
   });
-  $("recentRows").addEventListener("click", e => {
-    const id = e.target.dataset.track;
-    if (id) { goTo("tracking"); $("trackingInput").value = id; showTracking(id); }
-  });
 
-  function renderDeliveries() {
-    $("deliveryRows").innerHTML = parcels.map(p => `<tr>
-      <td class="tracking-code">${esc(p.trackingId)}</td><td>${esc(p.customer)}</td>
-      <td>${esc(p.driver || "Unassigned")}</td><td>${badge(p.status)}</td>
-      <td><select class="status-select" data-update="${esc(p.trackingId)}">
-        ${["Pending","In Transit","Delivered","Failed"].map(s => `<option ${p.status===s?"selected":""}>${s}</option>`).join("")}
-      </select></td></tr>`).join("");
-    $("deliveryEmpty").classList.toggle("show", parcels.length === 0);
-    $("deliveryRows").closest(".table-scroll").style.display = parcels.length ? "" : "none";
-  }
-  $("deliveryRows").addEventListener("change", e => {
-    const id = e.target.dataset.update;
-    if (!id) return;
-    const parcel = parcels.find(p => p.trackingId === id);
-    if (parcel) { parcel.status = e.target.value; save(); renderAll(); toast("Delivery status updated."); }
-  });
+  // =====================================
+  // CUSTOMER TRACKING
+  // =====================================
+  async function showTracking(trackingNumber, receiverPhone) {
+    if (!$("trackingResult")) return;
 
-function renderDrivers() {
-  $("driverGrid").innerHTML = drivers.map(d => `
-    <article class="driver-card">
-      <div class="driver-card-head">
-        <div class="driver-avatar">${esc(initials(d.name))}</div>
-        <div>
-          <h3>${esc(d.name)}</h3>
-          <small>Delivery partner</small>
+    $("trackingResult").innerHTML =
+      '<div class="tracking-result-card">Searching parcel...</div>';
+
+    try {
+      const query = new URLSearchParams({
+        receiverPhone
+      });
+
+      const data = await fetch(
+        `${API_BASE}/api/parcels/track/${encodeURIComponent(trackingNumber)}?${query}`
+      ).then(async response => {
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.message || "Parcel not found.");
+        }
+
+        return result;
+      });
+
+      const p = data.parcel || data;
+
+      $("trackingResult").innerHTML = `
+        <div class="tracking-result-card">
+          <h3>Shipment ${esc(p.trackingNumber || trackingNumber)}</h3>
+          <p><b>Description:</b> ${esc(p.parcelDescription || "—")}</p>
+          <p><b>Status:</b> ${badge(p.status)}</p>
+          <p><b>Created:</b> ${esc(dateFormat(p.createdAt))}</p>
+          <p><b>Last Updated:</b> ${esc(dateFormat(p.updatedAt))}</p>
         </div>
-      </div>
+      `;
 
-      <div class="driver-meta">
-        <span>☎ &nbsp;${esc(d.phone)}</span>
-        <span>▣ &nbsp;${esc(d.vehicle)}</span>
-        <span>↗ &nbsp;${parcels.filter(p => p.driver === d.name && ["Pending","In Transit"].includes(p.status)).length} active assigned shipment(s)</span>
-      </div>
+    } catch (error) {
+      $("trackingResult").innerHTML = `
+        <div class="tracking-result-card">
+          ${esc(error.message)}
+        </div>
+      `;
+    }
+  }
 
-      
-<div class="driver-actions">
-  <button class="btn btn-secondary"
-    data-action="view" data-id="${esc(d.id)}">View</button>
+  bind("trackingForm", "submit", e => {
+    e.preventDefault();
 
-  <button class="btn btn-primary"
-    data-action="edit" data-id="${esc(d.id)}">Edit</button>
+    const trackingNumber = $("trackingInput")?.value.trim();
+    const receiverPhone = $("trackingPhone")?.value.trim();
 
-  <button class="btn btn-danger"
-    data-action="delete" data-id="${esc(d.id)}">Delete</button>
-</div>
-
-    </article>
-  `).join("");
-
-  $("driverEmpty").classList.toggle("show", drivers.length === 0);
-}
-
-  function showTracking(id) {
-    const p = parcels.find(x => x.trackingId.toLowerCase() === id.toLowerCase());
-    if (!p) {
-      $("trackingResult").innerHTML = `<div class="tracking-result-card">We couldn't find that tracking number. Please check it and try again.</div>`;
+    if (!trackingNumber || !receiverPhone) {
+      toast("Enter tracking number and receiver phone.");
       return;
     }
-    $("trackingResult").innerHTML = `<div class="tracking-result-card">
-      <h3>Shipment ${esc(p.trackingId)}</h3>
-      <p><b>Customer:</b> ${esc(p.customer)}</p><p><b>Destination:</b> ${esc(p.destination)}</p>
-      <p><b>Status:</b> ${badge(p.status)}</p><p><b>Assigned driver:</b> ${esc(p.driver || "Not assigned")}</p>
-    </div>`;
-  }
-  $("trackingForm").addEventListener("submit", e => {
-    e.preventDefault(); showTracking($("trackingInput").value.trim());
+
+    showTracking(trackingNumber, receiverPhone);
   });
 
+  // =====================================
+  // REPORTS
+  // =====================================
   function renderReports() {
+    if (!$("reportMetrics") || !$("reportRows")) return;
+
     const count = s => parcels.filter(p => p.status === s).length;
+
+    const delivered = count("delivered");
+    const transit = count("in_transit") +
+      count("picked_up") + count("out_for_delivery");
+
+    const cancelled = count("cancelled");
+
     $("reportMetrics").innerHTML = [
-      ["Total shipments",parcels.length,"blue"],["Delivered",count("Delivered"),"green"],
-      ["In transit",count("In Transit"),"orange"],["Failed",count("Failed"),"red"]
-    ].map(([label,value,color]) => `<article class="metric-card"><div class="metric-top"><span>${label}</span></div><div class="metric-value">${value}</div></article>`).join("");
-    $("reportRows").innerHTML = parcels.map(p => `<tr><td class="tracking-code">${esc(p.trackingId)}</td><td>${esc(p.customer)}</td><td>${esc(p.destination)}</td><td>${badge(p.status)}</td><td>${p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}</td></tr>`).join("");
+      ["Total shipments", parcels.length],
+      ["Delivered", delivered],
+      ["In transit", transit],
+      ["Cancelled", cancelled]
+    ].map(([label, value]) => `
+      <article class="metric-card">
+        <div class="metric-top"><span>${label}</span></div>
+        <div class="metric-value">${value}</div>
+      </article>
+    `).join("");
+
+    $("reportRows").innerHTML = parcels.map(p => `
+      <tr>
+        <td class="tracking-code">${esc(parcelTracking(p))}</td>
+        <td>${esc(p.receiverName)}</td>
+        <td>${esc(p.deliveryAddress)}</td>
+        <td>${badge(p.status)}</td>
+        <td>${esc(dateFormat(p.createdAt))}</td>
+      </tr>
+    `).join("");
   }
 
+  // =====================================
+  // CSV EXPORT
+  // =====================================
   function exportCSV() {
-    if (!parcels.length) { toast("There are no shipments to export yet."); return; }
-    const rows = [["Tracking ID","Customer","Phone","Destination","Driver","Status","Created"]];
-    parcels.forEach(p => rows.push([p.trackingId,p.customer,p.phone,p.destination,p.driver,p.status,p.createdAt]));
-    const csv = rows.map(row => row.map(v => `"${String(v ?? "").replace(/"/g,'""')}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], {type:"text/csv;charset=utf-8;"});
+    if (!parcels.length) {
+      toast("There are no shipments to export.");
+      return;
+    }
+
+    const rows = [[
+      "Tracking Number",
+      "Sender",
+      "Sender Phone",
+      "Receiver",
+      "Receiver Phone",
+      "Pickup Address",
+      "Delivery Address",
+      "Driver",
+      "Status",
+      "Created"
+    ]];
+
+    parcels.forEach(p => {
+      rows.push([
+        p.trackingNumber,
+        p.senderName,
+        p.senderPhone,
+        p.receiverName,
+        p.receiverPhone,
+        p.pickupAddress,
+        p.deliveryAddress,
+        driverName(p),
+        statusLabel(p.status),
+        p.createdAt
+      ]);
+    });
+
+    const csv = rows.map(row =>
+      row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+
+    const blob = new Blob(["\uFEFF" + csv], {
+      type: "text/csv;charset=utf-8;"
+    });
+
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "smartcouriersystem-shipment-report.csv"; a.click();
-    URL.revokeObjectURL(url); toast("CSV report downloaded.");
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "smart-courier-report.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    toast("CSV report downloaded.");
   }
-  $("exportBtn").addEventListener("click", exportCSV);
-  $("reportExport").addEventListener("click", exportCSV);
-  $("settingsExport").addEventListener("click", () => {
+
+  bind("exportBtn", "click", exportCSV);
+  bind("reportExport", "click", exportCSV);
+
+  bind("settingsExport", "click", () => {
     const data = {
       parcels,
       drivers,
-      notificationSettings: readStore("smartcourier_notifications_v1", notificationDefaults),
+      notificationSettings,
       exportedAt: new Date().toISOString()
     };
-    const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
-    const url = URL.createObjectURL(blob); const a = document.createElement("a");
-    a.href=url; a.download="smartcouriersystem-backup.json"; a.click(); URL.revokeObjectURL(url);
-    toast("Data backup downloaded.");
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json"
+    });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "smart-courier-backup.json";
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    toast("Backup downloaded.");
   });
-  $("clearDataBtn").addEventListener("click", () => {
-    if (!confirm("Permanently clear all demo parcels and drivers from this browser?")) return;
-    parcels=[]; drivers=[]; save(); renderAll(); toast("Demo data cleared.");
+
+  // =====================================
+  // NOTIFICATION SETTINGS
+  // =====================================
+  function loadNotificationSettings() {
+    Object.keys(notificationDefaults).forEach(key => {
+      const element = $(key);
+      if (!element) return;
+
+      if (element.type === "checkbox") {
+        element.checked = !!notificationSettings[key];
+      } else {
+        element.value = notificationSettings[key];
+      }
+    });
+  }
+
+  function updateToggleLabels() {
+    if ($("smsStatus") && $("smsEnabled")) {
+      $("smsStatus").textContent =
+        $("smsEnabled").checked ? "ON" : "OFF";
+    }
+
+    if ($("emailStatus") && $("emailEnabled")) {
+      $("emailStatus").textContent =
+        $("emailEnabled").checked ? "ON" : "OFF";
+    }
+  }
+
+  bind("smsEnabled", "change", updateToggleLabels);
+  bind("emailEnabled", "change", updateToggleLabels);
+
+  bind("saveNotificationSettings", "click", () => {
+    Object.keys(notificationDefaults).forEach(key => {
+      const element = $(key);
+      if (!element) return;
+
+      notificationSettings[key] =
+        element.type === "checkbox"
+          ? element.checked
+          : element.value;
+    });
+
+    localStorage.setItem(
+      "smartcourier_notifications_v1",
+      JSON.stringify(notificationSettings)
+    );
+
+    updateToggleLabels();
+
+    toast("Notification settings saved.");
   });
-  $("globalSearch").addEventListener("keydown", e => {
+
+  // =====================================
+  // GLOBAL SEARCH
+  // =====================================
+  bind("globalSearch", "keydown", e => {
     if (e.key === "Enter") {
-      goTo("parcels"); $("parcelSearch").value = e.target.value; renderParcels();
+      goTo("parcels");
+
+      if ($("parcelSearch")) {
+        $("parcelSearch").value = e.target.value;
+      }
+
+      renderParcels();
     }
   });
+
   document.addEventListener("keydown", e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-      e.preventDefault(); $("globalSearch").focus();
+      e.preventDefault();
+
+      if ($("globalSearch")) {
+        $("globalSearch").focus();
+      }
     }
-    if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach(m => m.classList.remove("open"));
-  });
 
-// NOTIFICATION SETTINGS
-const notificationDefaults = {
-  smsEnabled: false,
-  emailEnabled: false,
-  smsProvider: "twilio",
-  emailProvider: "sendgrid",
-  notifyPending: true,
-  notifyTransit: true,
-  notifyDelivered: true,
-  notifyFailed: true
-};
-
-const notificationSettings = {
-  ...notificationDefaults,
-  ...readStore("smartcourier_notifications_v1", {})
-};
-
-// Load saved settings
-function loadNotificationSettings() {
-  Object.keys(notificationDefaults).forEach(key => {
-    const element = $(key);
-    if (!element) return;
-
-    if (element.type === "checkbox") {
-      element.checked = notificationSettings[key];
-    } else {
-      element.value = notificationSettings[key];
+    if (e.key === "Escape") {
+      document.querySelectorAll(".modal-backdrop.open").forEach(m => {
+        m.classList.remove("open");
+      });
     }
   });
-}
 
-function updateToggleLabels() {
-  const smsStatus = $("smsStatus");
-  const emailStatus = $("emailStatus");
-
-  if (smsStatus) smsStatus.textContent = $("smsEnabled").checked ? "ON" : "OFF";
-  if (emailStatus) emailStatus.textContent = $("emailEnabled").checked ? "ON" : "OFF";
-}
-
-$("smsEnabled").addEventListener("change", updateToggleLabels);
-$("emailEnabled").addEventListener("change", updateToggleLabels);
-
-
-// Save settings
-$("saveNotificationSettings").addEventListener("click", () => {
-  Object.keys(notificationDefaults).forEach(key => {
-    const element = $(key);
-    if (!element) return;
-
-    notificationSettings[key] =
-      element.type === "checkbox"
-        ? element.checked
-        : element.value;
-  });
-
-  localStorage.setItem(
-    "smartcourier_notifications_v1",
-    JSON.stringify(notificationSettings)
-  );
-
-  toast("Notification settings saved successfully.");
-  updateToggleLabels();
-});
-
-loadNotificationSettings();
-updateToggleLabels();
-
+  // =====================================
+  // RENDER ALL
+  // =====================================
   function renderAll() {
-    renderMetrics(); renderRecent(); renderParcels(); renderDeliveries(); renderDrivers(); renderReports(); driverOptions();
+    renderMetrics();
+    renderRecent();
+    renderParcels();
+    renderDeliveries();
+    renderDrivers();
+    renderReports();
+    driverOptions();
   }
-  renderAll();
+
+  loadNotificationSettings();
+  updateToggleLabels();
+
+  // =====================================
+  // START APPLICATION
+  // =====================================
+  restoreSession();
 });
