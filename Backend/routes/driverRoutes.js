@@ -22,11 +22,22 @@ router.get("/dashboard", protect, authorize("driver"), (req, res) => {
 // GET DRIVER'S ASSIGNED PARCELS
 router.get("/my-parcels", protect, authorize("driver"), async (req, res) => {
   try {
+    const driverId = req.user._id;
+
+    // DEBUG LOGS
+    console.log("========== DRIVER PARCEL DEBUG ==========");
+    console.log("LOGGED-IN DRIVER ID:", driverId.toString());
+    console.log("DRIVER NAME:", req.user.name);
+
     const parcels = await Parcel.find({
-      assignedDriver: req.user._id
+      assignedDriver: driverId
     }).select(
       "trackingNumber senderName receiverName pickupAddress deliveryAddress parcelDescription status locationSharingEnabled driverLocation createdAt"
     );
+
+    console.log("ASSIGNED PARCELS COUNT:", parcels.length);
+    console.log("ASSIGNED PARCELS:", parcels);
+    console.log("=========================================");
 
     res.json({
       success: true,
@@ -111,7 +122,7 @@ router.put("/update-status", protect, authorize("driver"), async (req, res) => {
   }
 });
 
-// ENABLE OR DISABLE GPS SHARING (DRIVER CONSENT)
+// ENABLE OR DISABLE GPS SHARING
 router.put("/location-sharing", protect, authorize("driver"), async (req, res) => {
   try {
     const { trackingNumber, enabled } = req.body;
