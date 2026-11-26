@@ -4,317 +4,955 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10213d">
+<title>SMART COURIER SYSTEM | Driver Dashboard</title>
 
-<title>Smart Courier - Driver Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
+:root {
+    --primary:#2563eb;
+    --primary-dark:#1d4ed8;
+    --navy:#10213d;
+    --bg:#f3f6fc;
+    --text:#172b4d;
+    --muted:#718096;
+    --border:#e5eaf2;
+    --green:#16a34a;
+    --red:#dc2626;
+    --orange:#d97706;
+    --shadow:0 8px 30px rgba(15,35,70,.07);
+}
+
 * {
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
+    box-sizing:border-box;
+    font-family:'Inter',Arial,sans-serif;
 }
 
 body {
-    margin: 0;
-    padding: 20px;
-    background: #f1f5f9;
-    color: #1e293b;
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
 }
 
-.container {
-    max-width: 750px;
-    margin: 30px auto;
-    background: white;
-    padding: 30px;
-    border-radius: 14px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-}
+.hidden { display:none !important; }
 
-h1 {
-    text-align: center;
-    color: #1d4ed8;
-    margin-bottom: 8px;
-}
-
-.subtitle {
-    text-align: center;
-    color: #64748b;
-    margin-bottom: 25px;
-}
-
-h3 {
-    color: #1e40af;
-    margin-top: 25px;
-}
-
-label {
-    display: block;
-    margin: 15px 0 7px;
-    font-weight: bold;
-}
-
-input, select {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #cbd5e1;
-    border-radius: 7px;
-    font-size: 15px;
-    background: white;
-}
+button,input,select { font:inherit; }
 
 button {
-    padding: 12px 18px;
-    border: none;
-    border-radius: 7px;
-    color: white;
-    font-size: 15px;
-    cursor: pointer;
-    margin-top: 12px;
-    margin-right: 6px;
+    cursor:pointer;
+    border:none;
+    transition:.2s ease;
 }
 
 button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    opacity:.5;
+    cursor:not-allowed;
 }
 
-.primary {
-    background: #2563eb;
-    width: 100%;
+/* LOGIN AND LOADING */
+
+.login-page {
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:25px;
+    background:
+        radial-gradient(circle at top left,#376ce9 0,transparent 40%),
+        linear-gradient(135deg,#10213d,#173b72);
 }
 
-.success {
-    background: #16a34a;
+.login-card {
+    width:100%;
+    max-width:440px;
+    padding:38px;
+    border-radius:22px;
+    background:white;
+    box-shadow:0 25px 70px rgba(0,0,0,.2);
 }
 
-.danger {
-    background: #dc2626;
+.brand-icon {
+    width:65px;
+    height:65px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:18px;
+    background:#eaf1ff;
+    color:var(--primary);
+    font-size:30px;
+    margin-bottom:22px;
 }
 
-.warning {
-    background: #d97706;
+.login-card h1,.login-card h2 {
+    margin:0 0 8px;
+    font-size:27px;
 }
 
-.card {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    padding: 18px;
-    border-radius: 10px;
-    margin-top: 20px;
+.login-card p {
+    color:var(--muted);
+    font-size:14px;
+    line-height:1.6;
 }
 
-.info {
-    margin-top: 12px;
-    line-height: 1.8;
-    overflow-wrap: anywhere;
+label {
+    display:block;
+    margin:18px 0 8px;
+    font-size:13px;
+    font-weight:700;
 }
 
-.status {
-    padding: 12px;
-    border-radius: 7px;
-    background: #eff6ff;
-    color: #1d4ed8;
-    margin-top: 15px;
-    overflow-wrap: anywhere;
+input,select {
+    width:100%;
+    padding:13px 14px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:white;
+    outline:none;
+    color:var(--text);
+}
+
+input:focus,select:focus {
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+
+.password-wrap { position:relative; }
+
+.password-wrap input { padding-right:75px; }
+
+.show-password {
+    position:absolute;
+    right:10px;
+    top:50%;
+    transform:translateY(-50%);
+    background:transparent;
+    color:var(--primary);
+    font-size:12px;
+    font-weight:700;
+}
+
+.primary-btn {
+    background:var(--primary);
+    color:white;
+    padding:13px 18px;
+    border-radius:10px;
+    font-weight:700;
+}
+
+.primary-btn:hover { background:var(--primary-dark); }
+
+.login-btn {
+    width:100%;
+    margin-top:25px;
+}
+
+.message {
+    padding:12px 14px;
+    margin-top:15px;
+    border-radius:10px;
+    font-size:13px;
+    line-height:1.5;
+    background:#eff6ff;
+    color:#1d4ed8;
+    overflow-wrap:anywhere;
+}
+
+.login-footer {
+    text-align:center;
+    margin-top:25px;
+    color:#94a3b8;
+    font-size:12px;
+}
+
+/* DASHBOARD */
+
+.dashboard {
+    min-height:100vh;
+    display:flex;
+}
+
+.sidebar {
+    width:255px;
+    background:var(--navy);
+    color:white;
+    padding:25px 17px;
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+}
+
+.sidebar-brand {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:5px 10px 30px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+}
+
+.logo {
+    width:43px;
+    height:43px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#2563eb;
+    font-size:22px;
+}
+
+.sidebar-brand strong { font-size:17px; }
+
+.sidebar-brand small {
+    display:block;
+    color:#9eb2d1;
+    font-size:10px;
+    margin-top:4px;
+}
+
+.nav-title {
+    color:#8ca2c3;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:1.3px;
+    margin:30px 10px 13px;
+}
+
+.nav-item {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:13px 14px;
+    margin:3px 0;
+    border-radius:10px;
+    color:#d1def2;
+    font-size:13px;
+    font-weight:600;
+    text-decoration:none;
+}
+
+.nav-item.active,.nav-item:hover {
+    background:#244b85;
+    color:white;
+}
+
+.sidebar-bottom { margin-top:auto; }
+
+.sidebar-user {
+    padding:15px 8px;
+    border-top:1px solid rgba(255,255,255,.12);
+    margin-top:25px;
+}
+
+.user-avatar {
+    width:39px;
+    height:39px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:#3268c6;
+    color:white;
+    font-weight:800;
+    flex-shrink:0;
+}
+
+.sidebar-user-row {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+}
+
+.sidebar-user-info { min-width:0; }
+
+.sidebar-user-info strong {
+    display:block;
+    font-size:12px;
+    overflow-wrap:anywhere;
+}
+
+.sidebar-user-info small {
+    color:#a9bad3;
+    font-size:10px;
+}
+
+.logout-side {
+    width:100%;
+    padding:12px;
+    margin-top:16px;
+    border-radius:9px;
+    background:rgba(255,255,255,.1);
+    color:white;
+    font-weight:600;
+}
+
+.logout-side:hover { background:#b91c1c; }
+
+/* MAIN */
+
+.main {
+    flex:1;
+    min-width:0;
+    padding:30px;
+}
+
+.topbar {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:28px;
+}
+
+.topbar h1 {
+    margin:0;
+    font-size:25px;
+}
+
+.topbar p {
+    margin:7px 0 0;
+    color:var(--muted);
+    font-size:13px;
+}
+
+.online-badge {
+    padding:9px 14px;
+    border-radius:30px;
+    background:#dcfce7;
+    color:#15803d;
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.welcome-banner {
+    background:linear-gradient(110deg,#1d4ed8,#477cf0);
+    color:white;
+    padding:27px;
+    border-radius:18px;
+    margin-bottom:25px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    box-shadow:0 10px 25px rgba(37,99,235,.17);
+}
+
+.welcome-banner h2 {
+    margin:0 0 9px;
+    font-size:22px;
+}
+
+.welcome-banner p {
+    margin:0;
+    font-size:13px;
+    color:#e1eaff;
+}
+
+.banner-icon { font-size:50px; opacity:.9; }
+
+/* STATISTICS */
+
+.stats-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:17px;
+    margin-bottom:25px;
+}
+
+.stat-card {
+    background:white;
+    border:1px solid var(--border);
+    border-radius:15px;
+    padding:20px;
+    box-shadow:var(--shadow);
+}
+
+.stat-top {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+}
+
+.stat-label {
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+}
+
+.stat-icon {
+    width:38px;
+    height:38px;
+    border-radius:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:19px;
+}
+
+.blue-icon { background:#eaf1ff; }
+.green-icon { background:#dcfce7; }
+.orange-icon { background:#fff2d9; }
+
+.stat-number {
+    display:block;
+    margin-top:13px;
+    font-size:29px;
+    font-weight:800;
+}
+
+/* CONTENT */
+
+.content-grid {
+    display:grid;
+    grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);
+    gap:20px;
+    align-items:start;
+}
+
+.panel {
+    background:white;
+    border:1px solid var(--border);
+    border-radius:15px;
+    padding:22px;
+    margin-bottom:20px;
+    box-shadow:var(--shadow);
+    min-width:0;
+}
+
+.panel-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:18px;
+}
+
+.panel-heading h3 {
+    margin:0;
+    font-size:16px;
+}
+
+.panel-heading span {
+    color:var(--muted);
+    font-size:11px;
+}
+
+.panel-description {
+    font-size:12px;
+    color:var(--muted);
+    line-height:1.7;
+    margin-top:0;
+}
+
+.refresh-btn {
+    padding:9px 12px;
+    border-radius:8px;
+    background:#eff6ff;
+    color:var(--primary);
+    font-size:11px;
+    font-weight:700;
+}
+
+.info-box {
+    padding:15px;
+    margin-top:15px;
+    background:#f8faff;
+    border:1px solid var(--border);
+    border-radius:11px;
+}
+
+.info-row {
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--border);
+    font-size:12px;
+}
+
+.info-row:last-child { border-bottom:none; }
+
+.info-row span:first-child { color:var(--muted); }
+
+.info-row span:last-child {
+    font-weight:700;
+    text-align:right;
+    overflow-wrap:anywhere;
+}
+
+.full-btn {
+    width:100%;
+    margin-top:15px;
+}
+
+.green-btn {
+    background:var(--green);
+    color:white;
+    padding:12px 15px;
+    border-radius:9px;
+    font-weight:700;
+}
+
+.red-btn {
+    background:var(--red);
+    color:white;
+    padding:12px 15px;
+    border-radius:9px;
+    font-weight:700;
+}
+
+.orange-btn {
+    background:var(--orange);
+    color:white;
+    padding:12px 15px;
+    border-radius:9px;
+    font-weight:700;
+}
+
+.button-row {
+    display:flex;
+    flex-wrap:wrap;
+    gap:9px;
+    margin-top:14px;
+}
+
+.button-row button { flex:1; }
+
+.status-box {
+    padding:12px;
+    border-radius:9px;
+    margin-top:13px;
+    background:#eff6ff;
+    color:#1d4ed8;
+    font-size:12px;
+    line-height:1.6;
+    overflow-wrap:anywhere;
 }
 
 .gps-active {
-    background: #dcfce7;
-    color: #166534;
+    background:#dcfce7;
+    color:#166534;
 }
 
-.hidden {
-    display: none;
+.gps-data {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:15px;
 }
 
-hr {
-    border: none;
-    border-top: 1px solid #e2e8f0;
-    margin: 25px 0;
+.gps-data div {
+    background:#f8fafc;
+    border:1px solid var(--border);
+    padding:12px;
+    border-radius:10px;
+    min-width:0;
 }
 
-.logout {
-    background: #64748b;
-    width: 100%;
+.gps-data small {
+    display:block;
+    color:var(--muted);
+    font-size:10px;
+    margin-bottom:6px;
+}
+
+.gps-data strong {
+    font-size:12px;
+    overflow-wrap:anywhere;
 }
 
 .footer {
-    text-align: center;
-    color: #94a3b8;
-    margin-top: 25px;
-    font-size: 13px;
+    text-align:center;
+    padding:25px 0 5px;
+    color:#9aa8bb;
+    font-size:11px;
+}
+
+/* RESPONSIVE */
+
+@media(max-width:950px) {
+    .sidebar { width:215px; }
+    .main { padding:22px; }
+    .content-grid { grid-template-columns:1fr; }
+}
+
+@media(max-width:650px) {
+    .dashboard { display:block; }
+    .sidebar { width:100%; padding:13px 15px; }
+    .sidebar-brand { padding:3px 5px 12px; }
+    .nav-title,.nav-item,.sidebar-user { display:none; }
+    .sidebar-bottom { display:none; }
+    .main { padding:18px 13px; }
+    .topbar h1 { font-size:20px; }
+    .welcome-banner { padding:20px; }
+    .welcome-banner h2 { font-size:18px; }
+    .banner-icon { font-size:35px; }
+    .stats-grid { grid-template-columns:1fr 1fr; gap:10px; }
+    .stat-card { padding:15px; }
+    .stat-number { font-size:24px; }
+    .panel { padding:17px; }
+    .online-badge { font-size:10px; padding:8px; }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<!-- SESSION LOADING -->
+<section id="loadingSection" class="login-page">
+    <div class="login-card" style="text-align:center;">
+        <div class="brand-icon" style="margin:0 auto 20px;">📦</div>
+        <h2>SMART COURIER SYSTEM</h2>
+        <p>Restoring your driver session...</p>
+    </div>
+</section>
 
-    <h1>Smart Courier</h1>
-    <p class="subtitle">Driver GPS & Parcel Management Dashboard</p>
+<!-- LOGIN PAGE -->
+<!-- hidden prevents login page flashing before JavaScript runs -->
+<section id="loginSection" class="login-page hidden">
+    <div class="login-card">
 
-    <!-- LOGIN SECTION -->
-    <div id="loginSection">
+        <div class="brand-icon">📦</div>
 
-        <h3>Driver Login</h3>
+        <h1>Driver Login</h1>
+        <p>Welcome to Smart Courier System. Sign in to manage your deliveries.</p>
 
-        <label for="email">Email Address</label>
-        <input
-            type="email"
-            id="email"
-            placeholder="Enter driver email"
-            value="driver1@smartcourier.com"
-        >
+        <form id="loginForm">
 
-        <label for="password">Password</label>
-        <input
-            type="password"
-            id="password"
-            placeholder="Enter password"
-        >
+            <label for="email">Email Address</label>
+            <input
+                type="email"
+                id="email"
+                placeholder="Enter your driver email"
+                autocomplete="username"
+                required
+            >
 
-        <button class="primary" id="loginButton" onclick="login()">
-            Login
-        </button>
+            <label for="password">Password</label>
 
-        <p id="loginMessage" class="status"></p>
+            <div class="password-wrap">
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="button" class="show-password" id="showPassword">
+                    Show
+                </button>
+            </div>
+
+            <button type="submit" class="primary-btn login-btn" id="loginButton">
+                Sign In to Dashboard
+            </button>
+
+        </form>
+
+        <div id="loginMessage" class="message hidden"></div>
+
+        <div class="login-footer">
+            Smart Courier System | Secure Driver Access
+        </div>
 
     </div>
+</section>
 
+<!-- MAIN DASHBOARD -->
+<div id="dashboardSection" class="dashboard hidden">
 
-    <!-- DASHBOARD SECTION -->
-    <div id="dashboardSection" class="hidden">
+    <aside class="sidebar">
 
-        <div class="card">
-            <h3>Driver Information</h3>
-            <div class="info">
-                <strong>Name:</strong>
-                <span id="driverName">-</span>
-                <br>
-
-                <strong>Email:</strong>
-                <span id="driverEmail">-</span>
+        <div class="sidebar-brand">
+            <div class="logo">📦</div>
+            <div>
+                <strong>SMART COURIER</strong>
+                <small>DRIVER PORTAL</small>
             </div>
         </div>
 
+        <div class="nav-title">MAIN MENU</div>
 
-        <!-- PARCEL SECTION -->
-        <div class="card">
+        <a href="#overview" class="nav-item active">🏠 Dashboard Overview</a>
+        <a href="#parcels" class="nav-item">📦 My Assigned Parcels</a>
+        <a href="#gps" class="nav-item">📍 Live GPS Tracking</a>
+        <a href="#status" class="nav-item">🔄 Update Status</a>
 
-            <h3>My Assigned Parcels</h3>
+        <div class="sidebar-bottom">
 
-            <label for="parcelSelect">Select Your Parcel</label>
+            <div class="sidebar-user">
+                <div class="sidebar-user-row">
+                    <div class="user-avatar" id="sidebarAvatar">D</div>
+                    <div class="sidebar-user-info">
+                        <strong id="sidebarName">Driver</strong>
+                        <small>Delivery Driver</small>
+                    </div>
+                </div>
 
-            <select id="parcelSelect">
-                <option value="">Loading parcels...</option>
-            </select>
-
-            <button
-                class="primary"
-                onclick="loadParcels()"
-            >
-                Refresh Parcel List
-            </button>
-
-            <p id="parcelMessage" class="status">
-                Select an assigned parcel.
-            </p>
-
-        </div>
-
-
-        <!-- GPS SECTION -->
-        <div class="card">
-
-            <h3>Live GPS Tracking</h3>
-
-            <p>
-                Start GPS sharing to allow customers to see
-                your live delivery location.
-            </p>
-
-            <button
-                class="success"
-                id="startButton"
-                onclick="startGPS()"
-                disabled
-            >
-                Start GPS
-            </button>
-
-            <button
-                class="danger"
-                id="stopButton"
-                onclick="stopGPS()"
-                disabled
-            >
-                Stop GPS
-            </button>
-
-            <div id="gpsMessage" class="status">
-                GPS is currently stopped.
+                <button class="logout-side" onclick="logout()">
+                    ↪ Logout
+                </button>
             </div>
 
-            <div class="info">
-                <strong>Latitude:</strong>
-                <span id="latitude">-</span>
-                <br>
+        </div>
+    </aside>
 
-                <strong>Longitude:</strong>
-                <span id="longitude">-</span>
-                <br>
+    <main class="main" id="overview">
 
-                <strong>Last Update:</strong>
-                <span id="lastUpdate">-</span>
+        <div class="topbar">
+            <div>
+                <h1>Driver Dashboard</h1>
+                <p>Manage your assigned deliveries and live location.</p>
+            </div>
+
+            <div class="online-badge">● Account Active</div>
+        </div>
+
+        <div class="welcome-banner">
+            <div>
+                <h2>Welcome back, <span id="welcomeName">Driver</span>!</h2>
+                <p>Stay on track and deliver every parcel safely.</p>
+            </div>
+            <div class="banner-icon">🚚</div>
+        </div>
+
+        <div class="stats-grid">
+
+            <div class="stat-card">
+                <div class="stat-top">
+                    <span class="stat-label">Active Parcels</span>
+                    <span class="stat-icon blue-icon">📦</span>
+                </div>
+                <strong class="stat-number" id="totalParcels">0</strong>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-top">
+                    <span class="stat-label">Pending Parcels</span>
+                    <span class="stat-icon orange-icon">⏳</span>
+                </div>
+                <strong class="stat-number" id="pendingParcels">0</strong>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-top">
+                    <span class="stat-label">In Transit</span>
+                    <span class="stat-icon green-icon">🚚</span>
+                </div>
+                <strong class="stat-number" id="transitParcels">0</strong>
             </div>
 
         </div>
 
+        <div class="content-grid">
 
-        <!-- STATUS UPDATE SECTION -->
-        <div class="card">
+            <div>
 
-            <h3>Update Parcel Status</h3>
+                <!-- PARCELS -->
+                <section class="panel" id="parcels">
 
-            <label for="statusSelect">
-                Select New Parcel Status
-            </label>
+                    <div class="panel-heading">
+                        <h3>📦 My Assigned Parcels</h3>
+                        <button class="refresh-btn" onclick="loadParcels()">↻ Refresh</button>
+                    </div>
 
-            <select id="statusSelect">
-                <option value="picked_up">Picked Up</option>
-                <option value="in_transit">In Transit</option>
-                <option value="out_for_delivery">Out for Delivery</option>
-                <option value="delivered">Delivered</option>
-            </select>
+                    <p class="panel-description">
+                        Select one of your assigned parcels to view its details.
+                    </p>
 
-            <button
-                class="warning"
-                id="statusButton"
-                onclick="updateParcelStatus()"
-                disabled
-            >
-                Update Parcel Status
-            </button>
+                    <label for="parcelSelect">Select Parcel</label>
 
-            <p id="statusMessage" class="status">
-                Select a parcel to update its status.
-            </p>
+                    <select id="parcelSelect">
+                        <option value="">Loading parcels...</option>
+                    </select>
+
+                    <div id="parcelDetails" class="info-box">
+
+                        <div class="info-row">
+                            <span>Tracking Number</span>
+                            <span id="detailTracking">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Sender</span>
+                            <span id="detailSender">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Receiver</span>
+                            <span id="detailReceiver">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Pickup Address</span>
+                            <span id="detailPickup">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Delivery Address</span>
+                            <span id="detailDelivery">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Current Status</span>
+                            <span id="detailStatus">-</span>
+                        </div>
+
+                    </div>
+
+                    <div id="parcelMessage" class="status-box">
+                        Loading assigned parcels...
+                    </div>
+
+                </section>
+
+                <!-- STATUS UPDATE -->
+                <section class="panel" id="status">
+
+                    <div class="panel-heading">
+                        <h3>🔄 Update Parcel Status</h3>
+                    </div>
+
+                    <p class="panel-description">
+                        Update the delivery progress of your selected parcel.
+                    </p>
+
+                    <label for="statusSelect">New Parcel Status</label>
+
+                    <select id="statusSelect">
+                        <option value="picked_up">Picked Up</option>
+                        <option value="in_transit">In Transit</option>
+                        <option value="out_for_delivery">Out for Delivery</option>
+                        <option value="delivered">Delivered</option>
+                    </select>
+
+                    <button class="orange-btn full-btn" id="statusButton"
+                        onclick="updateParcelStatus()" disabled>
+                        Update Parcel Status
+                    </button>
+
+                    <div id="statusMessage" class="status-box">
+                        Select a parcel first.
+                    </div>
+
+                </section>
+
+            </div>
+
+            <div>
+
+                <!-- DRIVER PROFILE -->
+                <section class="panel">
+
+                    <div class="panel-heading">
+                        <h3>👤 Driver Profile</h3>
+                    </div>
+
+                    <div class="info-box">
+
+                        <div class="info-row">
+                            <span>Driver Name</span>
+                            <span id="driverName">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Email</span>
+                            <span id="driverEmail">-</span>
+                        </div>
+
+                        <div class="info-row">
+                            <span>Account Role</span>
+                            <span>Driver</span>
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- GPS -->
+                <section class="panel" id="gps">
+
+                    <div class="panel-heading">
+                        <h3>📍 Live GPS Tracking</h3>
+                    </div>
+
+                    <p class="panel-description">
+                        Start GPS sharing to send your real-time delivery location to the server.
+                    </p>
+
+                    <div class="button-row">
+
+                        <button class="green-btn" id="startButton"
+                            onclick="startGPS()" disabled>
+                            ▶ Start GPS
+                        </button>
+
+                        <button class="red-btn" id="stopButton"
+                            onclick="stopGPS()" disabled>
+                            ■ Stop GPS
+                        </button>
+
+                    </div>
+
+                    <div id="gpsMessage" class="status-box">
+                        GPS is currently stopped.
+                    </div>
+
+                    <div class="gps-data">
+
+                        <div>
+                            <small>Latitude</small>
+                            <strong id="latitude">-</strong>
+                        </div>
+
+                        <div>
+                            <small>Longitude</small>
+                            <strong id="longitude">-</strong>
+                        </div>
+
+                        <div style="grid-column:1 / -1">
+                            <small>Last Location Update</small>
+                            <strong id="lastUpdate">-</strong>
+                        </div>
+
+                    </div>
+
+                </section>
+
+                <!-- LOGOUT -->
+                <section class="panel">
+
+                    <div class="panel-heading">
+                        <h3>🔐 Account Security</h3>
+                    </div>
+
+                    <p class="panel-description">
+                        Logout securely when you finish your delivery work.
+                    </p>
+
+                    <button class="red-btn full-btn" onclick="logout()">
+                        ↪ Logout from Account
+                    </button>
+
+                </section>
+
+            </div>
 
         </div>
 
+        <div class="footer">
+            © 2026 Smart Courier System | Driver Management Portal
+        </div>
 
-        <button class="logout" onclick="logout()">
-            Logout
-        </button>
-
-    </div>
-
-    <p class="footer">
-        Smart Courier System | Driver Management
-    </p>
+    </main>
 
 </div>
-
 
 <script>
 
@@ -323,42 +961,34 @@ hr {
 // =====================================
 
 const API_BASE = "https://smart-courier-system.onrender.com";
-
+const TOKEN_KEY = "driverToken";
 
 // =====================================
 // GLOBAL VARIABLES
 // =====================================
 
-let token = localStorage.getItem("driverToken") || "";
-
+let token = localStorage.getItem(TOKEN_KEY) || "";
 let currentUser = null;
-
 let assignedParcels = [];
-
 let watchId = null;
-
 let sendingLocation = false;
-
 let currentTrackingNumber = "";
-
 
 // =====================================
 // HTML ELEMENTS
 // =====================================
 
+const loadingSection = document.getElementById("loadingSection");
 const loginSection = document.getElementById("loginSection");
-
 const dashboardSection = document.getElementById("dashboardSection");
 
 const parcelSelect = document.getElementById("parcelSelect");
-
 const startButton = document.getElementById("startButton");
-
 const stopButton = document.getElementById("stopButton");
-
+const statusButton = document.getElementById("statusButton");
 
 // =====================================
-// API REQUEST FUNCTION
+// API REQUEST
 // =====================================
 
 async function apiRequest(endpoint, method = "GET", body = null) {
@@ -371,17 +1001,13 @@ async function apiRequest(endpoint, method = "GET", body = null) {
         headers.Authorization = "Bearer " + token;
     }
 
-    const options = {
-        method,
-        headers
-    };
+    const options = { method, headers };
 
     if (body !== null) {
         options.body = JSON.stringify(body);
     }
 
     const response = await fetch(API_BASE + endpoint, options);
-
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -391,39 +1017,69 @@ async function apiRequest(endpoint, method = "GET", body = null) {
     return data;
 }
 
+// =====================================
+// SHOW / HIDE SECTIONS
+// =====================================
+
+function showLoading() {
+    loadingSection.classList.remove("hidden");
+    loginSection.classList.add("hidden");
+    dashboardSection.classList.add("hidden");
+}
+
+function showLogin() {
+    loadingSection.classList.add("hidden");
+    loginSection.classList.remove("hidden");
+    dashboardSection.classList.add("hidden");
+}
+
+function showDashboard() {
+    loadingSection.classList.add("hidden");
+    loginSection.classList.add("hidden");
+    dashboardSection.classList.remove("hidden");
+}
 
 // =====================================
-// DRIVER LOGIN
+// LOGIN FORM
+// =====================================
+
+document.getElementById("loginForm").addEventListener("submit", function(event) {
+    event.preventDefault();
+    login();
+});
+
+// =====================================
+// LOGIN
 // =====================================
 
 async function login() {
 
     const email = document.getElementById("email").value.trim();
-
     const password = document.getElementById("password").value;
-
     const loginMessage = document.getElementById("loginMessage");
-
     const loginButton = document.getElementById("loginButton");
 
     if (!email || !password) {
-        loginMessage.textContent = "Please enter email and password.";
+        loginMessage.textContent = "Please enter your email and password.";
+        loginMessage.classList.remove("hidden");
         return;
     }
 
     loginButton.disabled = true;
+    loginButton.textContent = "Signing in...";
 
-    loginMessage.textContent = "Logging in...";
+    loginMessage.textContent = "Please wait. Checking your account...";
+    loginMessage.classList.remove("hidden");
 
     try {
+
+        token = "";
+        localStorage.removeItem(TOKEN_KEY);
 
         const data = await apiRequest(
             "/api/auth/login",
             "POST",
-            {
-                email,
-                password
-            }
+            { email, password }
         );
 
         if (!data.token || !data.user) {
@@ -435,34 +1091,77 @@ async function login() {
         }
 
         token = data.token;
-
         currentUser = data.user;
 
-        localStorage.setItem("driverToken", token);
+        localStorage.setItem(TOKEN_KEY, token);
 
-        loginSection.classList.add("hidden");
+        await openDriverDashboard();
 
-        dashboardSection.classList.remove("hidden");
-
-        document.getElementById("driverName").textContent =
-            currentUser.name || "-";
-
-        document.getElementById("driverEmail").textContent =
-            currentUser.email || "-";
-
-        await loadParcels();
+        loginMessage.classList.add("hidden");
+        document.getElementById("password").value = "";
 
     } catch (error) {
 
+        token = "";
+        currentUser = null;
+        localStorage.removeItem(TOKEN_KEY);
+
+        showLogin();
+
         loginMessage.textContent = "Login failed: " + error.message;
+        loginMessage.classList.remove("hidden");
 
     } finally {
 
         loginButton.disabled = false;
+        loginButton.textContent = "Sign In to Dashboard";
 
     }
 }
 
+// =====================================
+// SHOW / HIDE PASSWORD
+// =====================================
+
+document.getElementById("showPassword").addEventListener("click", function() {
+
+    const passwordInput = document.getElementById("password");
+
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        this.textContent = "Hide";
+    } else {
+        passwordInput.type = "password";
+        this.textContent = "Show";
+    }
+
+});
+
+// =====================================
+// OPEN DRIVER DASHBOARD
+// =====================================
+
+async function openDriverDashboard() {
+
+    if (!currentUser) {
+        throw new Error("Driver information is missing.");
+    }
+
+    showDashboard();
+
+    const name = currentUser.name || "Driver";
+    const email = currentUser.email || "-";
+
+    document.getElementById("driverName").textContent = name;
+    document.getElementById("driverEmail").textContent = email;
+    document.getElementById("welcomeName").textContent = name;
+    document.getElementById("sidebarName").textContent = name;
+
+    document.getElementById("sidebarAvatar").textContent =
+        name.charAt(0).toUpperCase();
+
+    await loadParcels();
+}
 
 // =====================================
 // LOAD ASSIGNED PARCELS
@@ -471,7 +1170,6 @@ async function login() {
 async function loadParcels() {
 
     const parcelMessage = document.getElementById("parcelMessage");
-
     const previousSelection = parcelSelect.value;
 
     parcelMessage.textContent = "Loading assigned parcels...";
@@ -489,49 +1187,46 @@ async function loadParcels() {
         if (assignedParcels.length === 0) {
 
             const option = document.createElement("option");
-
             option.value = "";
-
             option.textContent = "No active assigned parcels";
 
             parcelSelect.appendChild(option);
 
-            startButton.disabled = true;
+            updateStatistics();
+            clearParcelDetails();
 
-            document.getElementById("statusButton").disabled = true;
+            startButton.disabled = true;
+            statusButton.disabled = true;
 
             parcelMessage.textContent = "No active assigned parcels found.";
-
             return;
         }
 
         assignedParcels.forEach(parcel => {
 
             const option = document.createElement("option");
-
             option.value = parcel.trackingNumber;
 
             option.textContent =
-                parcel.trackingNumber + " - " + parcel.status;
+                parcel.trackingNumber + " - " + formatStatus(parcel.status);
 
             parcelSelect.appendChild(option);
 
         });
 
-        if (
-            assignedParcels.some(
-                parcel => parcel.trackingNumber === previousSelection
-            )
-        ) {
+        if (assignedParcels.some(
+            parcel => parcel.trackingNumber === previousSelection
+        )) {
             parcelSelect.value = previousSelection;
         }
+
+        updateStatistics();
+        syncStatusSelect();
 
         startButton.disabled = false;
 
         parcelMessage.textContent =
-            assignedParcels.length + " active parcel(s) loaded.";
-
-        syncStatusSelect();
+            assignedParcels.length + " active parcel(s) loaded successfully.";
 
     } catch (error) {
 
@@ -539,15 +1234,98 @@ async function loadParcels() {
             "Failed to load parcels: " + error.message;
 
         startButton.disabled = true;
+        statusButton.disabled = true;
 
-        document.getElementById("statusButton").disabled = true;
+        if (
+            error.message.toLowerCase().includes("token") ||
+            error.message.toLowerCase().includes("authentication") ||
+            error.message.toLowerCase().includes("unauthorized")
+        ) {
+            handleInvalidSession();
+        }
 
     }
 }
 
+// =====================================
+// UPDATE STATISTICS
+// =====================================
+
+function updateStatistics() {
+
+    const total = assignedParcels.length;
+
+    const pending = assignedParcels.filter(
+        p => p.status === "pending"
+    ).length;
+
+    const transit = assignedParcels.filter(
+        p => ["picked_up", "in_transit", "out_for_delivery"].includes(p.status)
+    ).length;
+
+    document.getElementById("totalParcels").textContent = total;
+    document.getElementById("pendingParcels").textContent = pending;
+    document.getElementById("transitParcels").textContent = transit;
+}
 
 // =====================================
-// SYNC STATUS SELECT
+// PARCEL DETAILS
+// =====================================
+
+function clearParcelDetails() {
+
+    [
+        "detailTracking",
+        "detailSender",
+        "detailReceiver",
+        "detailPickup",
+        "detailDelivery",
+        "detailStatus"
+    ].forEach(id => {
+        document.getElementById(id).textContent = "-";
+    });
+
+}
+
+function showParcelDetails(parcel) {
+
+    document.getElementById("detailTracking").textContent =
+        parcel.trackingNumber || "-";
+
+    document.getElementById("detailSender").textContent =
+        parcel.senderName || parcel.customerName || "-";
+
+    document.getElementById("detailReceiver").textContent =
+        parcel.receiverName || "-";
+
+    document.getElementById("detailPickup").textContent =
+        parcel.pickupAddress || parcel.pickupLocation || "-";
+
+    document.getElementById("detailDelivery").textContent =
+        parcel.deliveryAddress || parcel.destination || "-";
+
+    document.getElementById("detailStatus").textContent =
+        formatStatus(parcel.status);
+
+}
+
+// =====================================
+// FORMAT STATUS
+// =====================================
+
+function formatStatus(status) {
+
+    if (!status) return "Unknown";
+
+    return status
+        .split("_")
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+
+}
+
+// =====================================
+// SELECT PARCEL
 // =====================================
 
 function syncStatusSelect() {
@@ -558,16 +1336,16 @@ function syncStatusSelect() {
         p => p.trackingNumber === trackingNumber
     );
 
-    const statusSelect = document.getElementById("statusSelect");
-
-    const statusButton = document.getElementById("statusButton");
-
     if (!parcel) {
 
         statusButton.disabled = true;
+        startButton.disabled = true;
+        clearParcelDetails();
 
         return;
     }
+
+    showParcelDetails(parcel);
 
     const allowedStatuses = [
         "picked_up",
@@ -576,25 +1354,37 @@ function syncStatusSelect() {
         "delivered"
     ];
 
+    const statusSelect = document.getElementById("statusSelect");
+
     if (allowedStatuses.includes(parcel.status)) {
-
         statusSelect.value = parcel.status;
-
     } else {
-
         statusSelect.value = "picked_up";
-
     }
 
     statusButton.disabled = false;
+    startButton.disabled = sendingLocation;
 
     document.getElementById("statusMessage").textContent =
-        "Current parcel status: " + parcel.status;
+        "Current parcel status: " + formatStatus(parcel.status);
 
 }
 
-parcelSelect.addEventListener("change", syncStatusSelect);
+parcelSelect.addEventListener("change", function() {
 
+    if (sendingLocation && currentTrackingNumber !== parcelSelect.value) {
+
+        parcelSelect.value = currentTrackingNumber;
+
+        document.getElementById("parcelMessage").textContent =
+            "Stop GPS before selecting another parcel.";
+
+        return;
+    }
+
+    syncStatusSelect();
+
+});
 
 // =====================================
 // UPDATE PARCEL STATUS
@@ -603,53 +1393,43 @@ parcelSelect.addEventListener("change", syncStatusSelect);
 async function updateParcelStatus() {
 
     const trackingNumber = parcelSelect.value;
-
     const newStatus = document.getElementById("statusSelect").value;
 
     const statusMessage = document.getElementById("statusMessage");
 
-    const statusButton = document.getElementById("statusButton");
-
     if (!trackingNumber) {
-
         statusMessage.textContent = "Please select a parcel.";
-
         return;
     }
 
     if (sendingLocation && currentTrackingNumber !== trackingNumber) {
-
         statusMessage.textContent =
             "Stop GPS before changing the selected parcel.";
-
         return;
     }
 
     statusButton.disabled = true;
-
     statusMessage.textContent = "Updating parcel status...";
 
     try {
 
-        const data = await apiRequest(
+        await apiRequest(
             "/api/driver/update-status",
             "PUT",
             {
-                trackingNumber: trackingNumber,
+                trackingNumber,
                 status: newStatus
             }
         );
 
         statusMessage.textContent =
-            "Parcel status updated successfully: " + newStatus;
+            "Parcel status updated successfully: " + formatStatus(newStatus);
+
+        if (newStatus === "delivered" && sendingLocation) {
+            await stopGPS();
+        }
 
         await loadParcels();
-
-        if (newStatus === "delivered") {
-
-            await stopGPS();
-
-        }
 
     } catch (error) {
 
@@ -658,11 +1438,11 @@ async function updateParcelStatus() {
 
     } finally {
 
-        statusButton.disabled = false;
+        statusButton.disabled = !parcelSelect.value;
 
     }
-}
 
+}
 
 // =====================================
 // START GPS
@@ -671,28 +1451,21 @@ async function updateParcelStatus() {
 async function startGPS() {
 
     const trackingNumber = parcelSelect.value;
-
     const gpsMessage = document.getElementById("gpsMessage");
 
     if (!trackingNumber) {
-
         gpsMessage.textContent = "Please select a parcel first.";
-
         return;
     }
 
     if (!navigator.geolocation) {
-
         gpsMessage.textContent =
             "Geolocation is not supported by this browser.";
-
         return;
     }
 
     if (sendingLocation) {
-
         gpsMessage.textContent = "GPS is already running.";
-
         return;
     }
 
@@ -701,22 +1474,17 @@ async function startGPS() {
     );
 
     if (!parcel) {
-
         gpsMessage.textContent = "Selected parcel was not found.";
-
         return;
     }
 
     if (["delivered", "cancelled"].includes(parcel.status)) {
-
         gpsMessage.textContent =
             "GPS cannot start for this parcel status.";
-
         return;
     }
 
     startButton.disabled = true;
-
     gpsMessage.textContent = "Enabling GPS sharing...";
 
     try {
@@ -725,27 +1493,22 @@ async function startGPS() {
             "/api/driver/location-sharing",
             "PUT",
             {
-                trackingNumber: trackingNumber,
+                trackingNumber,
                 enabled: true
             }
         );
 
         currentTrackingNumber = trackingNumber;
-
         sendingLocation = true;
 
         watchId = navigator.geolocation.watchPosition(
-
             sendLocation,
-
             handleGPSError,
-
             {
-                enableHighAccuracy: true,
-                maximumAge: 5000,
-                timeout: 15000
+                enableHighAccuracy:true,
+                maximumAge:0,
+                timeout:30000
             }
-
         );
 
         stopButton.disabled = false;
@@ -758,7 +1521,6 @@ async function startGPS() {
     } catch (error) {
 
         sendingLocation = false;
-
         currentTrackingNumber = "";
 
         startButton.disabled = false;
@@ -770,9 +1532,8 @@ async function startGPS() {
 
 }
 
-
 // =====================================
-// SEND GPS LOCATION TO BACKEND
+// SEND LOCATION
 // =====================================
 
 async function sendLocation(position) {
@@ -780,7 +1541,6 @@ async function sendLocation(position) {
     if (!sendingLocation) return;
 
     const latitude = position.coords.latitude;
-
     const longitude = position.coords.longitude;
 
     document.getElementById("latitude").textContent =
@@ -792,19 +1552,19 @@ async function sendLocation(position) {
     document.getElementById("lastUpdate").textContent =
         new Date().toLocaleString();
 
-    if (!sendingLocation) return;
-
     try {
 
         await apiRequest(
             "/api/driver/update-location",
             "PUT",
             {
-                trackingNumber: currentTrackingNumber,
-                latitude: latitude,
-                longitude: longitude
+                trackingNumber:currentTrackingNumber,
+                latitude,
+                longitude
             }
         );
+
+        if (!sendingLocation) return;
 
         document.getElementById("gpsMessage").textContent =
             "GPS Sharing Active - Location sent successfully.";
@@ -820,7 +1580,6 @@ async function sendLocation(position) {
 
 }
 
-
 // =====================================
 // GPS ERROR HANDLER
 // =====================================
@@ -830,23 +1589,17 @@ function handleGPSError(error) {
     let errorMessage = "GPS error.";
 
     if (error.code === 1) {
-
-        errorMessage = "Location permission denied. Please allow location access.";
-
+        errorMessage =
+            "Location permission denied. Please allow location access.";
     } else if (error.code === 2) {
-
         errorMessage = "Your current location is unavailable.";
-
     } else if (error.code === 3) {
-
         errorMessage = "GPS request timed out.";
-
     }
 
     document.getElementById("gpsMessage").textContent = errorMessage;
 
 }
-
 
 // =====================================
 // STOP GPS
@@ -855,17 +1608,13 @@ function handleGPSError(error) {
 async function stopGPS() {
 
     const gpsMessage = document.getElementById("gpsMessage");
-
     const trackingNumber = currentTrackingNumber;
 
     sendingLocation = false;
 
     if (watchId !== null) {
-
         navigator.geolocation.clearWatch(watchId);
-
         watchId = null;
-
     }
 
     if (trackingNumber) {
@@ -876,8 +1625,8 @@ async function stopGPS() {
                 "/api/driver/location-sharing",
                 "PUT",
                 {
-                    trackingNumber: trackingNumber,
-                    enabled: false
+                    trackingNumber,
+                    enabled:false
                 }
             );
 
@@ -887,8 +1636,7 @@ async function stopGPS() {
         } catch (error) {
 
             gpsMessage.textContent =
-                "GPS stopped locally, but server update failed: " +
-                error.message;
+                "GPS stopped locally, but server update failed: " + error.message;
 
         }
 
@@ -900,15 +1648,32 @@ async function stopGPS() {
 
     currentTrackingNumber = "";
 
-    startButton.disabled = parcelSelect.options.length === 0 ||
-        !parcelSelect.value;
-
     stopButton.disabled = true;
+    startButton.disabled = !parcelSelect.value;
 
     gpsMessage.classList.remove("gps-active");
 
 }
 
+// =====================================
+// INVALID SESSION
+// =====================================
+
+function handleInvalidSession() {
+
+    token = "";
+    currentUser = null;
+
+    localStorage.removeItem(TOKEN_KEY);
+
+    showLogin();
+
+    document.getElementById("loginMessage").textContent =
+        "Your session has expired. Please login again.";
+
+    document.getElementById("loginMessage").classList.remove("hidden");
+
+}
 
 // =====================================
 // LOGOUT
@@ -917,44 +1682,49 @@ async function stopGPS() {
 async function logout() {
 
     if (sendingLocation) {
-
         await stopGPS();
-
     }
 
     token = "";
-
     currentUser = null;
-
     assignedParcels = [];
 
-    localStorage.removeItem("driverToken");
+    localStorage.removeItem(TOKEN_KEY);
 
-    dashboardSection.classList.add("hidden");
+    if (watchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+    }
 
-    loginSection.classList.remove("hidden");
+    sendingLocation = false;
+    currentTrackingNumber = "";
 
     document.getElementById("password").value = "";
+    document.getElementById("email").value = "";
+
+    document.getElementById("latitude").textContent = "-";
+    document.getElementById("longitude").textContent = "-";
+    document.getElementById("lastUpdate").textContent = "-";
 
     document.getElementById("loginMessage").textContent =
         "You have logged out successfully.";
 
-    document.getElementById("latitude").textContent = "-";
+    document.getElementById("loginMessage").classList.remove("hidden");
 
-    document.getElementById("longitude").textContent = "-";
-
-    document.getElementById("lastUpdate").textContent = "-";
+    showLogin();
 
 }
 
-
 // =====================================
-// RESTORE DRIVER SESSION
+// RESTORE DRIVER SESSION ON REFRESH
 // =====================================
 
 async function restoreSession() {
 
-    if (!token) return;
+    if (!token) {
+        showLogin();
+        return;
+    }
 
     try {
 
@@ -963,47 +1733,38 @@ async function restoreSession() {
         currentUser = data.driver;
 
         if (!currentUser || currentUser.role !== "driver") {
-
             throw new Error("Invalid driver session.");
-
         }
 
-        loginSection.classList.add("hidden");
-
-        dashboardSection.classList.remove("hidden");
-
-        document.getElementById("driverName").textContent =
-            currentUser.name || "-";
-
-        document.getElementById("driverEmail").textContent =
-            currentUser.email || "-";
-
-        await loadParcels();
+        await openDriverDashboard();
 
     } catch (error) {
 
         token = "";
-
         currentUser = null;
 
-        localStorage.removeItem("driverToken");
+        localStorage.removeItem(TOKEN_KEY);
 
-        loginSection.classList.remove("hidden");
-
-        dashboardSection.classList.add("hidden");
+        showLogin();
 
         document.getElementById("loginMessage").textContent =
-            "Please login again.";
+            "Your session has expired. Please login again.";
+
+        document.getElementById("loginMessage").classList.remove("hidden");
 
     }
 
 }
 
-
 // =====================================
 // PAGE START
 // =====================================
 
+// Loading is visible immediately.
+// Login is hidden in the HTML itself.
+// Valid token opens dashboard directly.
+
+showLoading();
 restoreSession();
 
 </script>

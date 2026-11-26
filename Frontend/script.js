@@ -8,13 +8,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const API_BASE = "https://smart-courier-system.onrender.com";
   const TOKEN_KEY = "smartcourier_admin_token";
 
-  // Login session belongs to this browser tab
-  localStorage.removeItem(TOKEN_KEY);
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
 
   let parcels = [];
   let drivers = [];
-
   let editingParcelId = null;
   let editingDriverId = null;
 
@@ -65,6 +62,20 @@ document.addEventListener("DOMContentLoaded", () => {
       .toUpperCase();
   }
 
+  function imageUrl(url) {
+    if (!url) return "";
+
+    try {
+      const parsed = new URL(url);
+
+      return ["https:", "http:"].includes(parsed.protocol)
+        ? esc(url)
+        : "";
+    } catch {
+      return "";
+    }
+  }
+
   function toast(message) {
     const el = $("toast");
 
@@ -80,12 +91,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     toast.timer = setTimeout(() => {
       el.classList.remove("show");
-    }, 2600);
+    }, 3000);
   }
 
   function bind(id, event, callback) {
     const element = $(id);
-    if (element) element.addEventListener(event, callback);
+
+    if (element) {
+      element.addEventListener(event, callback);
+    }
   }
 
   function statusLabel(status) {
@@ -108,24 +122,38 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function badge(status) {
-    return `<span class="status-badge ${statusClass(status)}">${esc(statusLabel(status))}</span>`;
+    return `
+      <span class="status-badge ${statusClass(status)}">
+        ${esc(statusLabel(status))}
+      </span>
+    `;
   }
 
   function dateFormat(date) {
     return date ? new Date(date).toLocaleDateString() : "—";
   }
 
+  // =====================================
+  // API REQUEST
+  // Supports JSON and FormData
+  // =====================================
   async function api(path, options = {}) {
-    const headers = {
-      ...(options.headers || {})
-    };
+    const headers = { ...(options.headers || {}) };
 
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    if (options.body) {
+    const isFormData =
+      typeof FormData !== "undefined" &&
+      options.body instanceof FormData;
+
+    if (options.body && !isFormData) {
       headers["Content-Type"] = "application/json";
+    }
+
+    if (isFormData) {
+      delete headers["Content-Type"];
     }
 
     const response = await fetch(`${API_BASE}${path}`, {
@@ -153,12 +181,19 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
 
+  // =====================================
+  // MODALS
+  // =====================================
   function openModal(id) {
-    if ($(id)) $(id).classList.add("open");
+    if ($(id)) {
+      $(id).classList.add("open");
+    }
   }
 
   function closeModal(id) {
-    if ($(id)) $(id).classList.remove("open");
+    if ($(id)) {
+      $(id).classList.remove("open");
+    }
   }
 
   document.querySelectorAll("[data-close]").forEach(button => {
@@ -176,9 +211,65 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // =====================================
+  // IMAGE PREVIEW
+  // =====================================
+  function previewImage(inputId, previewId) {
+    const input = $(inputId);
+    const preview = $(previewId);
+
+    if (!input || !preview) return;
+
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+
+      if (!file) {
+        preview.removeAttribute("src");
+        preview.style.display = "none";
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        toast("Please select an image file.");
+        input.value = "";
+        preview.style.display = "none";
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast("Image size must be 5 MB or less.");
+        input.value = "";
+        preview.style.display = "none";
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        preview.src = reader.result;
+        preview.style.display = "block";
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
+  previewImage("productImage", "productImagePreview");
+  previewImage("driverProfileImage", "driverImagePreview");
+
+  function resetPreview(inputId, previewId) {
+    if ($(inputId)) {
+      $(inputId).value = "";
+    }
+
+    if ($(previewId)) {
+      $(previewId).removeAttribute("src");
+      $(previewId).style.display = "none";
+    }
+  }
+
+  // =====================================
   // ADMIN LOGIN AND SCREEN CONTROL
   // =====================================
-
   function showApp() {
     if ($("loginScreen")) {
       $("loginScreen").style.display = "none";
@@ -188,7 +279,6 @@ document.addEventListener("DOMContentLoaded", () => {
       $("appShell").style.display = "block";
     }
 
-    // Show the selected screen only after session decision
     document.documentElement.classList.add("auth-ready");
   }
 
@@ -201,7 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
       $("appShell").style.display = "none";
     }
 
-    // Show login only after session decision
     document.documentElement.classList.add("auth-ready");
   }
 
@@ -209,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.removeItem(TOKEN_KEY);
     token = "";
 
+    closeSidebar();
     showLogin();
 
     if (showMessage) {
@@ -238,7 +328,9 @@ document.addEventListener("DOMContentLoaded", () => {
         button.textContent = "Logging in...";
       }
 
-      if (errorElement) errorElement.textContent = "";
+      if (errorElement) {
+        errorElement.textContent = "";
+      }
 
       const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
@@ -259,6 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       token = data.token;
+
       sessionStorage.setItem(TOKEN_KEY, token);
 
       if ($("sidebarAdminName")) {
@@ -288,25 +381,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   bind("logoutBtn", "click", () => logout());
-
-  // Settings page logout button
   bind("clearDataBtn", "click", () => logout());
 
   // =====================================
   // SESSION RESTORE
   // =====================================
   async function restoreSession() {
-    // No token: show login screen
     if (!token) {
       showLogin();
       return;
     }
 
     try {
-      // Verify saved token with backend first
       const data = await api("/api/admin/dashboard");
 
-      // Token valid: show dashboard
       if ($("sidebarAdminName")) {
         $("sidebarAdminName").textContent = data.user.name;
       }
@@ -341,11 +429,9 @@ document.addEventListener("DOMContentLoaded", () => {
       ]);
 
       const dashboard = results[0];
-      const parcelData = results[1];
-      const driverData = results[2];
 
-      parcels = parcelData.parcels || [];
-      drivers = driverData.drivers || [];
+      parcels = results[1].parcels || [];
+      drivers = results[2].drivers || [];
 
       if ($("sidebarAdminName")) {
         $("sidebarAdminName").textContent = dashboard.user.name;
@@ -373,6 +459,43 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // =====================================
+  // MOBILE SIDEBAR
+  // =====================================
+  function openSidebar() {
+    if ($("sidebar")) {
+      $("sidebar").classList.add("open");
+    }
+
+    if ($("sidebarOverlay")) {
+      $("sidebarOverlay").classList.add("show");
+    }
+
+    document.body.classList.add("sidebar-open");
+  }
+
+  function closeSidebar() {
+    if ($("sidebar")) {
+      $("sidebar").classList.remove("open");
+    }
+
+    if ($("sidebarOverlay")) {
+      $("sidebarOverlay").classList.remove("show");
+    }
+
+    document.body.classList.remove("sidebar-open");
+  }
+
+  bind("mobileMenu", "click", () => {
+    if ($("sidebar")?.classList.contains("open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+
+  bind("sidebarOverlay", "click", closeSidebar);
+
+  // =====================================
   // NAVIGATION
   // =====================================
   function goTo(page) {
@@ -394,9 +517,11 @@ document.addEventListener("DOMContentLoaded", () => {
         : "Dashboard";
     }
 
-    if ($("sidebar")) $("sidebar").classList.remove("open");
+    closeSidebar();
 
-    if (page === "reports") renderReports();
+    if (page === "reports") {
+      renderReports();
+    }
   }
 
   document.querySelectorAll(".nav-link").forEach(a => {
@@ -410,10 +535,6 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", () => {
       goTo(button.dataset.goto);
     });
-  });
-
-  bind("mobileMenu", "click", () => {
-    if ($("sidebar")) $("sidebar").classList.toggle("open");
   });
 
   bind("helpBtn", "click", () => {
@@ -446,6 +567,9 @@ document.addEventListener("DOMContentLoaded", () => {
     editingParcelId = null;
 
     $("parcelForm").reset();
+
+    resetPreview("productImage", "productImagePreview");
+
     driverOptions();
 
     if ($("parcelDriver")) {
@@ -483,6 +607,9 @@ document.addEventListener("DOMContentLoaded", () => {
     editingParcelId = p._id;
 
     $("parcelForm").reset();
+
+    resetPreview("productImage", "productImagePreview");
+
     driverOptions();
 
     if ($("trackingId")) {
@@ -500,12 +627,9 @@ document.addEventListener("DOMContentLoaded", () => {
     $("weightKg").value = p.weightKg ?? "";
 
     if ($("parcelDriver")) {
-      const currentDriverId =
-        p.assignedDriver?._id ||
-        p.assignedDriver ||
-        "";
+      $("parcelDriver").value =
+        p.assignedDriver?._id || p.assignedDriver || "";
 
-      $("parcelDriver").value = currentDriverId;
       $("parcelDriver").disabled = false;
     }
 
@@ -519,6 +643,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if ($("parcelSaveBtn")) {
       $("parcelSaveBtn").textContent = "Update shipment";
+    }
+
+    if (p.productImage && $("productImagePreview")) {
+      $("productImagePreview").src = p.productImage;
+      $("productImagePreview").style.display = "block";
     }
 
     openModal("parcelModal");
@@ -536,6 +665,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bind("parcelForm", "submit", async e => {
     e.preventDefault();
 
+    const button = $("parcelSaveBtn");
+
     try {
       const parcelData = {
         senderName: $("senderName")?.value.trim(),
@@ -549,6 +680,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const driverId = $("parcelDriver")?.value;
+      const imageFile = $("productImage")?.files?.[0];
 
       if (
         !parcelData.senderName ||
@@ -565,25 +697,35 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      const button = $("parcelSaveBtn");
-
       if (button) {
         button.disabled = true;
         button.textContent = editingParcelId ? "Updating..." : "Saving...";
       }
 
       if (editingParcelId) {
-        const currentParcel = parcels.find(
-          p => p._id === editingParcelId
-        );
+        const currentParcel = parcels.find(p => p._id === editingParcelId);
 
         if (!currentParcel) {
           throw new Error("Parcel not found.");
         }
 
+        let body = JSON.stringify(parcelData);
+
+        if (imageFile) {
+          const formData = new FormData();
+
+          Object.entries(parcelData).forEach(([key, value]) => {
+            formData.append(key, value);
+          });
+
+          formData.append("productImage", imageFile);
+
+          body = formData;
+        }
+
         await api(`/api/admin/parcels/${encodeURIComponent(editingParcelId)}`, {
           method: "PUT",
-          body: JSON.stringify(parcelData)
+          body
         });
 
         const currentDriverId =
@@ -606,25 +748,39 @@ document.addEventListener("DOMContentLoaded", () => {
         editingParcelId = null;
 
         closeModal("parcelModal");
+
         $("parcelForm").reset();
 
-        if ($("parcelDriver")) {
-          $("parcelDriver").disabled = false;
-        }
+        resetPreview("productImage", "productImagePreview");
 
         await loadAllData();
 
         toast("Parcel updated successfully!");
+
         return;
+      }
+
+      let createBody = JSON.stringify(parcelData);
+
+      if (imageFile) {
+        const formData = new FormData();
+
+        Object.entries(parcelData).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+
+        formData.append("productImage", imageFile);
+
+        createBody = formData;
       }
 
       const result = await api("/api/parcels/book", {
         method: "POST",
-        body: JSON.stringify(parcelData)
+        body: createBody
       });
 
-      const trackingNumber = result.trackingNumber ||
-        result.parcel?.trackingNumber;
+      const trackingNumber =
+        result.trackingNumber || result.parcel?.trackingNumber;
 
       if (driverId && trackingNumber) {
         try {
@@ -639,14 +795,20 @@ document.addEventListener("DOMContentLoaded", () => {
           toast("Parcel created and driver assigned!");
 
         } catch (assignError) {
-          toast("Parcel created, but driver assignment failed: " + assignError.message);
+          toast(
+            "Parcel created, but driver assignment failed: " +
+            assignError.message
+          );
         }
       } else {
         toast("Parcel created successfully!");
       }
 
       closeModal("parcelModal");
+
       $("parcelForm").reset();
+
+      resetPreview("productImage", "productImagePreview");
 
       await loadAllData();
 
@@ -656,11 +818,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (error) {
       toast(error.message);
+
     } finally {
-      if ($("parcelSaveBtn")) {
-        $("parcelSaveBtn").disabled = false;
-        $("parcelSaveBtn").textContent =
-          editingParcelId ? "Update shipment" : "Save shipment";
+      if (button) {
+        button.disabled = false;
+
+        button.textContent = editingParcelId
+          ? "Update shipment"
+          : "Save shipment";
       }
     }
   });
@@ -673,10 +838,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!p) return;
 
+    const productImage = imageUrl(p.productImage);
+
     if ($("viewParcelContent")) {
       $("viewParcelContent").innerHTML = `
         <div class="tracking-result-card">
+
+          ${productImage ? `
+            <img
+              src="${productImage}"
+              alt="Product image"
+              class="product-image parcel-image"
+            >
+          ` : ""}
+
           <h3>Shipment ${esc(p.trackingNumber)}</h3>
+
           <p><b>Sender:</b> ${esc(p.senderName)}</p>
           <p><b>Sender Phone:</b> ${esc(p.senderPhone)}</p>
           <p><b>Receiver:</b> ${esc(p.receiverName)}</p>
@@ -687,7 +864,8 @@ document.addEventListener("DOMContentLoaded", () => {
           <p><b>Weight:</b> ${esc(p.weightKg)} kg</p>
           <p><b>Assigned Driver:</b> ${esc(p.assignedDriver?.name || "Unassigned")}</p>
           <p><b>Status:</b> ${badge(p.status)}</p>
-          <p><b>Created:</b> ${esc(new Date(p.createdAt).toLocaleString())}</p>
+          <p><b>Created:</b> ${esc(p.createdAt ? new Date(p.createdAt).toLocaleString() : "—")}</p>
+
         </div>
       `;
     }
@@ -696,7 +874,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =====================================
-  // RENDER DASHBOARD METRICS
+  // DASHBOARD METRICS
   // =====================================
   function renderMetrics() {
     const total = parcels.length;
@@ -705,23 +883,54 @@ document.addEventListener("DOMContentLoaded", () => {
       parcels.filter(p => p.status === status).length;
 
     const pending = count("pending");
-    const transit = count("in_transit") + count("picked_up") +
+
+    const transit =
+      count("in_transit") +
+      count("picked_up") +
       count("out_for_delivery");
+
     const delivered = count("delivered");
     const failed = count("cancelled");
 
-    if ($("metricTotal")) $("metricTotal").textContent = total;
-    if ($("metricTransit")) $("metricTransit").textContent = transit;
-    if ($("metricDelivered")) $("metricDelivered").textContent = delivered;
-    if ($("metricIssues")) $("metricIssues").textContent = failed;
+    if ($("metricTotal")) {
+      $("metricTotal").textContent = total;
+    }
 
-    if ($("navParcelCount")) $("navParcelCount").textContent = total;
-    if ($("donutTotal")) $("donutTotal").textContent = total;
+    if ($("metricTransit")) {
+      $("metricTransit").textContent = transit;
+    }
 
-    if ($("breakDelivered")) $("breakDelivered").textContent = delivered;
-    if ($("breakTransit")) $("breakTransit").textContent = transit;
-    if ($("breakPending")) $("breakPending").textContent = pending;
-    if ($("breakFailed")) $("breakFailed").textContent = failed;
+    if ($("metricDelivered")) {
+      $("metricDelivered").textContent = delivered;
+    }
+
+    if ($("metricIssues")) {
+      $("metricIssues").textContent = failed;
+    }
+
+    if ($("navParcelCount")) {
+      $("navParcelCount").textContent = total;
+    }
+
+    if ($("donutTotal")) {
+      $("donutTotal").textContent = total;
+    }
+
+    if ($("breakDelivered")) {
+      $("breakDelivered").textContent = delivered;
+    }
+
+    if ($("breakTransit")) {
+      $("breakTransit").textContent = transit;
+    }
+
+    if ($("breakPending")) {
+      $("breakPending").textContent = pending;
+    }
+
+    if ($("breakFailed")) {
+      $("breakFailed").textContent = failed;
+    }
 
     const pct = n => total ? n / total * 100 : 0;
 
@@ -736,7 +945,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const segments = colors.map(([color, number]) => {
       const from = start;
+
       start += pct(number);
+
       return `${color} ${from}% ${start}%`;
     });
 
@@ -751,10 +962,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // TABLE HELPERS
   // =====================================
   function customerCell(name) {
-    return `<span class="customer-cell">
-      <i class="tiny-avatar">${esc(initials(name))}</i>
-      ${esc(name)}
-    </span>`;
+    return `
+      <span class="customer-cell">
+        <i class="tiny-avatar">${esc(initials(name))}</i>
+        ${esc(name)}
+      </span>
+    `;
   }
 
   function driverName(p) {
@@ -781,8 +994,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${esc(driverName(p))}</td>
         <td>${badge(p.status)}</td>
         <td>
-          <button class="row-action"
-            data-track="${esc(parcelTracking(p))}">View</button>
+          <button
+            class="row-action action-view"
+            data-track="${esc(parcelTracking(p))}"
+          >View</button>
         </td>
       </tr>
     `).join("");
@@ -792,31 +1007,41 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const table = $("recentRows").closest(".table-scroll");
-    if (table) table.style.display = list.length ? "" : "none";
+
+    if (table) {
+      table.style.display = list.length ? "" : "none";
+    }
   }
 
   bind("recentRows", "click", e => {
     const button = e.target.closest("[data-track]");
-    if (!button) return;
 
-    const id = button.dataset.track;
+    if (!button) return;
 
     goTo("tracking");
 
-    if ($("trackingInput")) $("trackingInput").value = id;
-    if ($("trackingPhone")) $("trackingPhone").value = "";
+    if ($("trackingInput")) {
+      $("trackingInput").value = button.dataset.track;
+    }
+
+    if ($("trackingPhone")) {
+      $("trackingPhone").value = "";
+    }
 
     toast("Enter receiver phone number to track this parcel.");
   });
 
   // =====================================
-  // PARCEL TABLE WITH VIEW / EDIT / DELETE
+  // PARCEL TABLE
   // =====================================
   function renderParcels() {
     if (!$("parcelRows")) return;
 
-    const query = $("parcelSearch")?.value.trim().toLowerCase() || "";
-    const filter = $("statusFilter")?.value || "all";
+    const query =
+      $("parcelSearch")?.value.trim().toLowerCase() || "";
+
+    const filter =
+      $("statusFilter")?.value || "all";
 
     const list = parcels.filter(p => {
       const matchesStatus =
@@ -843,18 +1068,27 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${esc(p.deliveryAddress)}</td>
         <td>${esc(driverName(p))}</td>
         <td>${badge(p.status)}</td>
+
         <td class="parcel-actions">
-          <button class="row-action"
+
+          <button
+            class="row-action action-view"
             data-parcel-action="view"
-            data-id="${esc(p._id)}">View</button>
+            data-id="${esc(p._id)}"
+          >View</button>
 
-          <button class="row-action"
+          <button
+            class="row-action action-edit"
             data-parcel-action="edit"
-            data-id="${esc(p._id)}">Edit</button>
+            data-id="${esc(p._id)}"
+          >Edit</button>
 
-          <button class="row-action"
+          <button
+            class="row-action action-delete"
             data-parcel-action="delete"
-            data-id="${esc(p._id)}">Delete</button>
+            data-id="${esc(p._id)}"
+          >Delete</button>
+
         </td>
       </tr>
     `).join("");
@@ -864,7 +1098,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const table = $("parcelRows").closest(".table-scroll");
-    if (table) table.style.display = list.length ? "" : "none";
+
+    if (table) {
+      table.style.display = list.length ? "" : "none";
+    }
   }
 
   bind("parcelSearch", "input", renderParcels);
@@ -872,6 +1109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   bind("parcelRows", "click", async e => {
     const button = e.target.closest("[data-parcel-action]");
+
     if (!button) return;
 
     const id = button.dataset.id;
@@ -894,13 +1132,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (action === "delete") {
       const parcel = parcels.find(p => p._id === id);
+
       if (!parcel) return;
 
-      const confirmed = confirm(
+      if (!confirm(
         `Are you sure you want to delete parcel ${parcel.trackingNumber}?`
-      );
-
-      if (!confirmed) return;
+      )) {
+        return;
+      }
 
       try {
         await api(`/api/admin/parcels/${encodeURIComponent(id)}`, {
@@ -938,7 +1177,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const table = $("deliveryRows").closest(".table-scroll");
-    if (table) table.style.display = parcels.length ? "" : "none";
+
+    if (table) {
+      table.style.display = parcels.length ? "" : "none";
+    }
   }
 
   // =====================================
@@ -950,6 +1192,8 @@ document.addEventListener("DOMContentLoaded", () => {
     editingDriverId = null;
 
     $("driverForm").reset();
+
+    resetPreview("driverProfileImage", "driverImagePreview");
 
     if ($("driverModalTitle")) {
       $("driverModalTitle").textContent = "Add a driver";
@@ -979,9 +1223,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     $("driverForm").reset();
 
+    resetPreview("driverProfileImage", "driverImagePreview");
+
     $("driverName").value = driver.name || "";
     $("driverPhone").value = driver.phone || "";
     $("driverEmail").value = driver.email || "";
+
+    if (driver.profileImage && $("driverImagePreview")) {
+      $("driverImagePreview").src = driver.profileImage;
+      $("driverImagePreview").style.display = "block";
+    }
 
     if ($("driverPassword")) {
       $("driverPassword").value = "";
@@ -1010,6 +1261,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bind("driverForm", "submit", async e => {
     e.preventDefault();
 
+    const button = $("driverSaveBtn");
+
     try {
       const driverData = {
         name: $("driverName")?.value.trim(),
@@ -1019,67 +1272,84 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const password = $("driverPassword")?.value || "";
 
+      const imageFile =
+        $("driverProfileImage")?.files?.[0];
+
       if (!driverData.name || !driverData.email || !driverData.phone) {
         toast("Please complete all required driver fields.");
         return;
       }
 
-      const button = $("driverSaveBtn");
+      if (editingDriverId && password && password.length < 8) {
+        toast("Password must be at least 8 characters.");
+        return;
+      }
+
+      if (!editingDriverId && !password) {
+        toast("Driver password is required.");
+        return;
+      }
+
+      if (!editingDriverId && password.length < 8) {
+        toast("Driver password must be at least 8 characters.");
+        return;
+      }
+
+      if (password) {
+        driverData.password = password;
+      }
+
+      if (button) {
+        button.disabled = true;
+
+        button.textContent = editingDriverId
+          ? "Updating..."
+          : "Creating...";
+      }
+
+      let body = JSON.stringify(driverData);
+
+      if (imageFile) {
+        const formData = new FormData();
+
+        Object.entries(driverData).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+
+        formData.append("profileImage", imageFile);
+
+        body = formData;
+      }
 
       if (editingDriverId) {
-        if (password && password.length < 8) {
-          toast("Password must be at least 8 characters.");
-          return;
-        }
-
-        if (password) {
-          driverData.password = password;
-        }
-
-        if (button) {
-          button.disabled = true;
-          button.textContent = "Updating...";
-        }
-
         await api(`/api/admin/drivers/${encodeURIComponent(editingDriverId)}`, {
           method: "PUT",
-          body: JSON.stringify(driverData)
+          body
         });
 
         editingDriverId = null;
 
         closeModal("driverModal");
+
         $("driverForm").reset();
+
+        resetPreview("driverProfileImage", "driverImagePreview");
 
         await loadAllData();
 
         toast("Driver updated successfully!");
 
       } else {
-        if (!password) {
-          toast("Driver password is required.");
-          return;
-        }
-
-        if (password.length < 8) {
-          toast("Driver password must be at least 8 characters.");
-          return;
-        }
-
-        driverData.password = password;
-
-        if (button) {
-          button.disabled = true;
-          button.textContent = "Creating...";
-        }
-
         await api("/api/admin/drivers", {
           method: "POST",
-          body: JSON.stringify(driverData)
+          body
         });
 
         closeModal("driverModal");
+
         $("driverForm").reset();
+
+        resetPreview("driverProfileImage", "driverImagePreview");
 
         await loadAllData();
 
@@ -1088,11 +1358,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     } catch (error) {
       toast(error.message);
+
     } finally {
-      if ($("driverSaveBtn")) {
-        $("driverSaveBtn").disabled = false;
-        $("driverSaveBtn").textContent =
-          editingDriverId ? "Update driver" : "Add driver";
+      if (button) {
+        button.disabled = false;
+
+        button.textContent = editingDriverId
+          ? "Update driver"
+          : "Add driver";
       }
 
       if ($("driverPassword") && !editingDriverId) {
@@ -1103,46 +1376,73 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // =====================================
-  // DRIVER CARDS WITH VIEW / EDIT / DELETE
+  // DRIVER CARDS
   // =====================================
   function renderDrivers() {
     if (!$("driverGrid")) return;
 
     $("driverGrid").innerHTML = drivers.map(d => {
       const activeShipments = parcels.filter(p =>
-        (p.assignedDriver?._id || p.assignedDriver) === d._id &&
+        String(p.assignedDriver?._id || p.assignedDriver || "") ===
+        String(d._id) &&
         !["delivered", "cancelled"].includes(p.status)
       ).length;
 
+      // FIXED: photo variable
+      const photo = imageUrl(d.profileImage);
+
       return `
         <article class="driver-card">
+
           <div class="driver-card-head">
-            <div class="driver-avatar">${esc(initials(d.name))}</div>
+
+            <div class="driver-avatar">
+              ${photo
+                ? `
+                  <img
+                    src="${photo}"
+                    alt="${esc(d.name)} profile picture"
+                  >
+                `
+                : esc(initials(d.name))
+              }
+            </div>
+
             <div>
               <h3>${esc(d.name)}</h3>
               <small>Delivery partner</small>
             </div>
+
           </div>
 
           <div class="driver-meta">
-            <span>☎ &nbsp;${esc(d.phone)}</span>
+            <span>☎ &nbsp;${esc(d.phone || "No phone")}</span>
             <span>✉ &nbsp;${esc(d.email)}</span>
             <span>↗ &nbsp;${activeShipments} active assigned shipment(s)</span>
           </div>
 
           <div class="driver-actions">
-            <button class="btn btn-secondary"
+
+            <button
+              class="btn action-view"
               data-action="view"
-              data-id="${esc(d._id)}">View</button>
+              data-id="${esc(d._id)}"
+            >View</button>
 
-            <button class="btn btn-secondary"
+            <button
+              class="btn action-edit"
               data-action="edit"
-              data-id="${esc(d._id)}">Edit</button>
+              data-id="${esc(d._id)}"
+            >Edit</button>
 
-            <button class="btn btn-secondary"
+            <button
+              class="btn action-delete"
               data-action="delete"
-              data-id="${esc(d._id)}">Delete</button>
+              data-id="${esc(d._id)}"
+            >Delete</button>
+
           </div>
+
         </article>
       `;
     }).join("");
@@ -1152,14 +1452,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // =====================================
+  // DRIVER VIEW / EDIT / DELETE
+  // =====================================
   bind("driverGrid", "click", async e => {
     const button = e.target.closest("button[data-action]");
+
     if (!button) return;
 
     const id = button.dataset.id;
     const action = button.dataset.action;
 
     const driver = drivers.find(d => d._id === id);
+
     if (!driver) return;
 
     if (action === "view") {
@@ -1176,7 +1481,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const active = parcels.filter(p =>
-        (p.assignedDriver?._id || p.assignedDriver) === driver._id &&
+        String(p.assignedDriver?._id || p.assignedDriver || "") ===
+        String(driver._id) &&
         !["delivered", "cancelled"].includes(p.status)
       ).length;
 
@@ -1184,7 +1490,18 @@ document.addEventListener("DOMContentLoaded", () => {
         $("viewDriverShipments").value = active;
       }
 
+      if ($("viewDriverImage")) {
+        if (driver.profileImage) {
+          $("viewDriverImage").src = driver.profileImage;
+          $("viewDriverImage").style.display = "block";
+        } else {
+          $("viewDriverImage").removeAttribute("src");
+          $("viewDriverImage").style.display = "none";
+        }
+      }
+
       openModal("viewDriverModal");
+
       return;
     }
 
@@ -1195,21 +1512,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (action === "delete") {
       const assignedParcels = parcels.filter(p =>
-        (p.assignedDriver?._id || p.assignedDriver) === driver._id
+        String(p.assignedDriver?._id || p.assignedDriver || "") ===
+        String(driver._id)
       );
 
       if (assignedParcels.length > 0) {
         alert(
           `This driver has ${assignedParcels.length} assigned parcel(s).\n\nPlease reassign those parcels to another driver before deleting this driver.`
         );
+
         return;
       }
 
-      const confirmed = confirm(
+      if (!confirm(
         `Are you sure you want to delete driver ${driver.name}?`
-      );
-
-      if (!confirmed) return;
+      )) {
+        return;
+      }
 
       try {
         await api(`/api/admin/drivers/${encodeURIComponent(id)}`, {
@@ -1240,27 +1559,38 @@ document.addEventListener("DOMContentLoaded", () => {
         receiverPhone
       });
 
-      const data = await fetch(
+      const response = await fetch(
         `${API_BASE}/api/parcels/track/${encodeURIComponent(trackingNumber)}?${query}`
-      ).then(async response => {
-        const result = await response.json();
+      );
 
-        if (!response.ok) {
-          throw new Error(result.message || "Parcel not found.");
-        }
+      const data = await response.json();
 
-        return result;
-      });
+      if (!response.ok) {
+        throw new Error(data.message || "Parcel not found.");
+      }
 
       const p = data.parcel || data;
 
+      const photo = imageUrl(p.productImage);
+
       $("trackingResult").innerHTML = `
         <div class="tracking-result-card">
+
+          ${photo ? `
+            <img
+              src="${photo}"
+              alt="Product image"
+              class="product-image parcel-image"
+            >
+          ` : ""}
+
           <h3>Shipment ${esc(p.trackingNumber || trackingNumber)}</h3>
+
           <p><b>Description:</b> ${esc(p.parcelDescription || "—")}</p>
           <p><b>Status:</b> ${badge(p.status)}</p>
           <p><b>Created:</b> ${esc(dateFormat(p.createdAt))}</p>
           <p><b>Last Updated:</b> ${esc(dateFormat(p.updatedAt))}</p>
+
         </div>
       `;
 
@@ -1276,8 +1606,11 @@ document.addEventListener("DOMContentLoaded", () => {
   bind("trackingForm", "submit", e => {
     e.preventDefault();
 
-    const trackingNumber = $("trackingInput")?.value.trim();
-    const receiverPhone = $("trackingPhone")?.value.trim();
+    const trackingNumber =
+      $("trackingInput")?.value.trim();
+
+    const receiverPhone =
+      $("trackingPhone")?.value.trim();
 
     if (!trackingNumber || !receiverPhone) {
       toast("Enter tracking number and receiver phone.");
@@ -1293,11 +1626,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderReports() {
     if (!$("reportMetrics") || !$("reportRows")) return;
 
-    const count = s => parcels.filter(p => p.status === s).length;
+    const count = s =>
+      parcels.filter(p => p.status === s).length;
 
     const delivered = count("delivered");
-    const transit = count("in_transit") +
-      count("picked_up") + count("out_for_delivery");
+
+    const transit =
+      count("in_transit") +
+      count("picked_up") +
+      count("out_for_delivery");
 
     const cancelled = count("cancelled");
 
@@ -1306,9 +1643,11 @@ document.addEventListener("DOMContentLoaded", () => {
       ["Delivered", delivered],
       ["In transit", transit],
       ["Cancelled", cancelled]
-    ].map(([label, value]) => `
-      <article class="metric-card">
-        <div class="metric-top"><span>${label}</span></div>
+    ].map(([label, value], index) => `
+      <article class="metric-card metric-color-${index + 1}">
+        <div class="metric-top">
+          <span>${label}</span>
+        </div>
         <div class="metric-value">${value}</div>
       </article>
     `).join("");
@@ -1362,7 +1701,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const csv = rows.map(row =>
-      row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")
+      row.map(v =>
+        `"${String(v ?? "").replace(/"/g, '""')}"`
+      ).join(",")
     ).join("\n");
 
     const blob = new Blob(["\uFEFF" + csv], {
@@ -1370,6 +1711,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
 
     a.href = url;
@@ -1384,6 +1726,9 @@ document.addEventListener("DOMContentLoaded", () => {
   bind("exportBtn", "click", exportCSV);
   bind("reportExport", "click", exportCSV);
 
+  // =====================================
+  // BACKUP EXPORT
+  // =====================================
   bind("settingsExport", "click", () => {
     const data = {
       parcels,
@@ -1392,11 +1737,13 @@ document.addEventListener("DOMContentLoaded", () => {
       exportedAt: new Date().toISOString()
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json"
-    });
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" }
+    );
 
     const url = URL.createObjectURL(blob);
+
     const a = document.createElement("a");
 
     a.href = url;
@@ -1414,6 +1761,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadNotificationSettings() {
     Object.keys(notificationDefaults).forEach(key => {
       const element = $(key);
+
       if (!element) return;
 
       if (element.type === "checkbox") {
@@ -1422,17 +1770,29 @@ document.addEventListener("DOMContentLoaded", () => {
         element.value = notificationSettings[key];
       }
     });
+
+    updateToggleLabels();
   }
 
   function updateToggleLabels() {
     if ($("smsStatus") && $("smsEnabled")) {
       $("smsStatus").textContent =
         $("smsEnabled").checked ? "ON" : "OFF";
+
+      $("smsStatus").classList.toggle(
+        "is-on",
+        $("smsEnabled").checked
+      );
     }
 
     if ($("emailStatus") && $("emailEnabled")) {
       $("emailStatus").textContent =
         $("emailEnabled").checked ? "ON" : "OFF";
+
+      $("emailStatus").classList.toggle(
+        "is-on",
+        $("emailEnabled").checked
+      );
     }
   }
 
@@ -1442,6 +1802,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bind("saveNotificationSettings", "click", () => {
     Object.keys(notificationDefaults).forEach(key => {
       const element = $(key);
+
       if (!element) return;
 
       notificationSettings[key] =
@@ -1475,8 +1836,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // =====================================
+  // KEYBOARD SHORTCUTS
+  // =====================================
   document.addEventListener("keydown", e => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.key.toLowerCase() === "k"
+    ) {
       e.preventDefault();
 
       if ($("globalSearch")) {
@@ -1488,6 +1855,8 @@ document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll(".modal-backdrop.open").forEach(m => {
         m.classList.remove("open");
       });
+
+      closeSidebar();
     }
   });
 
@@ -1504,11 +1873,42 @@ document.addEventListener("DOMContentLoaded", () => {
     driverOptions();
   }
 
+  // =====================================
+  // LOAD NOTIFICATION SETTINGS
+  // =====================================
   loadNotificationSettings();
-  updateToggleLabels();
 
   // =====================================
   // START APPLICATION
   // =====================================
   restoreSession();
+
 });
+// SMS ON/OFF STATUS
+const smsEnabled = document.getElementById("smsEnabled");
+const smsStatus = document.getElementById("smsStatus");
+
+if (smsEnabled && smsStatus) {
+  const updateSmsStatus = () => {
+    smsStatus.textContent = smsEnabled.checked ? "ON" : "OFF";
+    smsStatus.classList.toggle("is-on", smsEnabled.checked);
+  };
+
+  smsEnabled.addEventListener("change", updateSmsStatus);
+  updateSmsStatus();
+}
+
+
+// EMAIL ON/OFF STATUS
+const emailEnabled = document.getElementById("emailEnabled");
+const emailStatus = document.getElementById("emailStatus");
+
+if (emailEnabled && emailStatus) {
+  const updateEmailStatus = () => {
+    emailStatus.textContent = emailEnabled.checked ? "ON" : "OFF";
+    emailStatus.classList.toggle("is-on", emailEnabled.checked);
+  };
+
+  emailEnabled.addEventListener("change", updateEmailStatus);
+  updateEmailStatus();
+}

@@ -1,6 +1,10 @@
 {
   "dependencies": {
     "bcryptjs": "^3.0.3",
-    "jsonwebtoken": "^9.0.3"
+    "cloudinary": "^2.11.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.6.1",
+    "twilio": "^6.3.1"
   }
 }

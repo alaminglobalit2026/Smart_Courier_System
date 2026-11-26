@@ -1,11 +1,13 @@
-
 const express = require("express");
 const Parcel = require("../models/Parcel");
+const upload = require("../middleware/uploadMiddleware");
+const uploadImage = require("../services/imageUploadService");
 
 const router = express.Router();
 
 // CUSTOMER: CREATE PARCEL BOOKING WITHOUT LOGIN
-router.post("/book", async (req, res) => {
+// Supports optional product image upload
+router.post("/book", upload.single("productImage"), async (req, res) => {
   try {
     const {
       senderName,
@@ -43,6 +45,16 @@ router.post("/book", async (req, res) => {
       });
     }
 
+    // Upload image only when a file is selected
+    let productImage = "";
+
+    if (req.file) {
+      productImage = await uploadImage(
+        req.file,
+        "smart-courier/products"
+      );
+    }
+
     const parcel = await Parcel.create({
       senderName,
       senderPhone,
@@ -51,7 +63,8 @@ router.post("/book", async (req, res) => {
       pickupAddress,
       deliveryAddress,
       parcelDescription,
-      weightKg: weight
+      weightKg: weight,
+      productImage
     });
 
     res.status(201).json({
@@ -59,6 +72,7 @@ router.post("/book", async (req, res) => {
       message: "Parcel booked successfully!",
       trackingNumber: parcel.trackingNumber,
       status: parcel.status,
+      productImage: parcel.productImage,
       createdAt: parcel.createdAt
     });
 
@@ -67,7 +81,7 @@ router.post("/book", async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Unable to book parcel. Please try again."
+      message: error.message || "Unable to book parcel. Please try again."
     });
   }
 });
@@ -92,7 +106,7 @@ router.get("/track/:trackingNumber", async (req, res) => {
       trackingNumber,
       receiverPhone
     }).select(
-      "trackingNumber status parcelDescription createdAt updatedAt"
+      "trackingNumber status parcelDescription productImage createdAt updatedAt"
     );
 
     if (!parcel) {

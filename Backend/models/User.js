@@ -36,6 +36,12 @@ const userSchema = new mongoose.Schema(
       default: ""
     },
 
+    // Driver profile picture URL
+    profileImage: {
+      type: String,
+      default: ""
+    },
+
     isActive: {
       type: Boolean,
       default: true

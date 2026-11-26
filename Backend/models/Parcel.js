@@ -2,6 +2,25 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 
+const notificationSchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: ["pending", "sent", "failed"],
+      default: "pending"
+    },
+    sentAt: {
+      type: Date,
+      default: null
+    },
+    error: {
+      type: String,
+      default: ""
+    }
+  },
+  { _id: false }
+);
+
 const parcelSchema = new mongoose.Schema(
   {
     trackingNumber: {
@@ -53,18 +72,25 @@ const parcelSchema = new mongoose.Schema(
       min: 0.1
     },
 
+    // Product picture URL
+    productImage: {
+      type: String,
+      default: ""
+    },
+
     deliveryCharge: {
       type: Number,
       default: 0,
       min: 0
     },
 
-    paymentStatus: {
-      type: String,
-      enum: ["unpaid", "paid"],
-      default: "unpaid"
+    // Payment information
+    payment: {
+      type: mongoose.Schema.Types.Mixed,
+      default: "pending"
     },
 
+    // Parcel delivery status
     status: {
       type: String,
       enum: [
@@ -78,34 +104,29 @@ const parcelSchema = new mongoose.Schema(
       default: "pending"
     },
 
+    // Assigned delivery driver
     assignedDriver: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null
     },
 
+    // Driver GPS sharing
     locationSharingEnabled: {
       type: Boolean,
       default: false
     },
 
+    // GPS coordinates and update information
     driverLocation: {
-      latitude: {
-        type: Number,
-        min: -90,
-        max: 90,
-        default: null
-      },
-      longitude: {
-        type: Number,
-        min: -180,
-        max: 180,
-        default: null
-      },
-      updatedAt: {
-        type: Date,
-        default: null
-      }
+      type: mongoose.Schema.Types.Mixed,
+      default: null
+    },
+
+    // Notification information
+    notification: {
+      type: notificationSchema,
+      default: () => ({})
     }
   },
   {
@@ -113,6 +134,7 @@ const parcelSchema = new mongoose.Schema(
   }
 );
 
+// Automatically generate tracking number
 parcelSchema.pre("validate", function () {
   if (!this.trackingNumber) {
     this.trackingNumber =

@@ -5,7 +5,9 @@ const router = express.Router();
 const Parcel = require("../models/Parcel");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
+// =====================================
 // DRIVER DASHBOARD
+// =====================================
 router.get("/dashboard", protect, authorize("driver"), (req, res) => {
   res.json({
     success: true,
@@ -14,17 +16,20 @@ router.get("/dashboard", protect, authorize("driver"), (req, res) => {
       id: req.user._id,
       name: req.user.name,
       email: req.user.email,
+      phone: req.user.phone || "",
+      profileImage: req.user.profileImage || "",
       role: req.user.role
     }
   });
 });
 
+// =====================================
 // GET DRIVER'S ASSIGNED PARCELS
+// =====================================
 router.get("/my-parcels", protect, authorize("driver"), async (req, res) => {
   try {
     const driverId = req.user._id;
 
-    // DEBUG LOGS
     console.log("========== DRIVER PARCEL DEBUG ==========");
     console.log("LOGGED-IN DRIVER ID:", driverId.toString());
     console.log("DRIVER NAME:", req.user.name);
@@ -32,11 +37,10 @@ router.get("/my-parcels", protect, authorize("driver"), async (req, res) => {
     const parcels = await Parcel.find({
       assignedDriver: driverId
     }).select(
-      "trackingNumber senderName receiverName pickupAddress deliveryAddress parcelDescription status locationSharingEnabled driverLocation createdAt"
+      "trackingNumber senderName receiverName pickupAddress deliveryAddress parcelDescription productImage status locationSharingEnabled driverLocation createdAt"
     );
 
     console.log("ASSIGNED PARCELS COUNT:", parcels.length);
-    console.log("ASSIGNED PARCELS:", parcels);
     console.log("=========================================");
 
     res.json({
@@ -55,7 +59,9 @@ router.get("/my-parcels", protect, authorize("driver"), async (req, res) => {
   }
 });
 
+// =====================================
 // UPDATE PARCEL STATUS
+// =====================================
 router.put("/update-status", protect, authorize("driver"), async (req, res) => {
   try {
     const { trackingNumber, status } = req.body;
@@ -108,7 +114,8 @@ router.put("/update-status", protect, authorize("driver"), async (req, res) => {
       message: "Parcel status updated successfully!",
       parcel: {
         trackingNumber: parcel.trackingNumber,
-        status: parcel.status
+        status: parcel.status,
+        productImage: parcel.productImage || ""
       }
     });
 
@@ -122,7 +129,9 @@ router.put("/update-status", protect, authorize("driver"), async (req, res) => {
   }
 });
 
+// =====================================
 // ENABLE OR DISABLE GPS SHARING
+// =====================================
 router.put("/location-sharing", protect, authorize("driver"), async (req, res) => {
   try {
     const { trackingNumber, enabled } = req.body;
@@ -183,7 +192,9 @@ router.put("/location-sharing", protect, authorize("driver"), async (req, res) =
   }
 });
 
+// =====================================
 // UPDATE DRIVER GPS LOCATION
+// =====================================
 router.put("/update-location", protect, authorize("driver"), async (req, res) => {
   try {
     const { trackingNumber, latitude, longitude } = req.body;
