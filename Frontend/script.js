@@ -1,4 +1,4 @@
-
+alert("SMART COURIER SYSTEM JAVASCRIPT LOADED");
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
 
