@@ -1,4 +1,15 @@
-alert("SMART COURIER SYSTEM JAVASCRIPT LOADED");
+window.addEventListener("error", function (event) {
+  alert(
+    "JAVASCRIPT ERROR:\n" +
+    event.message +
+    "\nLine: " +
+    event.lineno
+  );
+});
+
+window.addEventListener("unhandledrejection", function (event) {
+  alert("PROMISE ERROR:\n" + event.reason);
+});
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
 
