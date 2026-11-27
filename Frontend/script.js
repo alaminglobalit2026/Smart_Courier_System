@@ -597,12 +597,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showParcelEditModal(id) {
-    const p = parcels.find(item => item._id === id);
+  const p = parcels.find(item => item._id === id);
+  alert("Sender Phone: " + p.senderPhone + "\nReceiver Phone: " + p.receiverPhone);
 
-    if (!p) {
-      toast("Parcel not found.");
-      return;
-    }
+  console.log("EDIT PARCEL DATA:", p);
+
+  if (!p) {
+    toast("Parcel not found.");
+    return;
+  }
 
     editingParcelId = p._id;
 
@@ -668,7 +671,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const button = $("parcelSaveBtn");
 
     try {
+      alert("Receiver Phone Before Save: " + $("receiverPhone").value);
       const parcelData = {
+        console.log("RECEIVER PHONE BEFORE SAVE:", $("receiverPhone").value);
         senderName: $("senderName")?.value.trim(),
         senderPhone: $("senderPhone")?.value.trim(),
         receiverName: $("receiverName")?.value.trim(),

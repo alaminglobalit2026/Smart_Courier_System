@@ -214,6 +214,7 @@ router.put(
   async (req, res) => {
     try {
       const { id } = req.params;
+      console.log("RECEIVER PHONE RECEIVED:", req.body.receiverPhone);
       const { name, email, phone, password } = req.body;
 
       console.log("DRIVER EDIT HANDLER HIT:", id);
