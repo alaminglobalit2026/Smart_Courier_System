@@ -14,6 +14,11 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
+  <!-- Leaflet Map CSS -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
   <style>
     html:not(.auth-ready) #loginScreen,
@@ -911,6 +916,7 @@
 
 
       
+
 <!-- CUSTOMER LIVE TRACKING -->
 <section class="page" id="tracking">
 
@@ -918,7 +924,9 @@
     <div>
       <p class="eyebrow">PARCEL MANAGEMENT</p>
       <h1>Customer Live Tracking</h1>
-      <p>Track your parcel and follow the delivery driver in real time.</p>
+      <p class="page-subtitle">
+        Track your parcel and follow the delivery driver in real time.
+      </p>
     </div>
   </div>
 
@@ -934,7 +942,7 @@
         <span class="tracking-icon">📦</span>
       </div>
 
-      <div class="tracking-form">
+      <form class="tracking-form" id="trackingForm">
 
         <div class="tracking-input-group">
           <label for="trackingNumber">Tracking Number</label>
@@ -942,25 +950,31 @@
             type="text"
             id="trackingNumber"
             placeholder="Example: SM-100001"
+            required
           >
         </div>
 
         <div class="tracking-input-group">
-          <label for="receiverPhone">Receiver Phone</label>
+          <label for="trackingReceiverPhone">Receiver Phone</label>
           <input
             type="tel"
-            id="receiverPhone"
+            id="trackingReceiverPhone"
             placeholder="Enter receiver phone"
+            required
           >
         </div>
 
-        <button id="trackButton" onclick="trackParcel()">
+        <button id="trackButton" type="submit">
           <span>🔍</span> Track Parcel
         </button>
 
-      </div>
+      </form>
 
-      <div id="message" class="tracking-message">
+      <div
+        id="message"
+        class="tracking-message"
+        aria-live="polite"
+      >
         Enter your tracking number and receiver phone to start tracking.
       </div>
 
@@ -975,6 +989,7 @@
           <h2>Driver Live Location</h2>
           <p>Real-time delivery driver location</p>
         </div>
+
         <span class="live-indicator">
           <span></span> LIVE
         </span>
@@ -1662,6 +1677,8 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- LEAFLET MAP LIBRARY -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <!-- JAVASCRIPT -->
 <script src="script.js"></script>

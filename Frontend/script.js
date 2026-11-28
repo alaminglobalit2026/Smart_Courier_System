@@ -1,3 +1,4 @@
+
 window.addEventListener("error", function (event) {
   alert(
     "JAVASCRIPT ERROR:\n" +
@@ -10,6 +11,7 @@ window.addEventListener("error", function (event) {
 window.addEventListener("unhandledrejection", function (event) {
   alert("PROMISE ERROR:\n" + event.reason);
 });
+
 document.addEventListener("DOMContentLoaded", () => {
   const $ = id => document.getElementById(id);
 
@@ -362,7 +364,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       token = data.token;
-
       sessionStorage.setItem(TOKEN_KEY, token);
 
       if ($("sidebarAdminName")) {
@@ -570,7 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // =====================================
-  // CREATE / EDIT PARCEL MODAL
+  // CREATE PARCEL MODAL
   // =====================================
   function showParcelModal() {
     if (!$("parcelForm")) return;
@@ -607,16 +608,16 @@ document.addEventListener("DOMContentLoaded", () => {
     openModal("parcelModal");
   }
 
+  // =====================================
+  // EDIT PARCEL MODAL
+  // =====================================
   function showParcelEditModal(id) {
-  const p = parcels.find(item => item._id === id);
-  alert("Sender Phone: " + p.senderPhone + "\nReceiver Phone: " + p.receiverPhone);
+    const p = parcels.find(item => item._id === id);
 
-  console.log("EDIT PARCEL DATA:", p);
-
-  if (!p) {
-    toast("Parcel not found.");
-    return;
-  }
+    if (!p) {
+      toast("Parcel not found.");
+      return;
+    }
 
     editingParcelId = p._id;
 
@@ -631,14 +632,37 @@ document.addEventListener("DOMContentLoaded", () => {
       $("trackingId").disabled = true;
     }
 
-    $("senderName").value = p.senderName || "";
-    $("senderPhone").value = p.senderPhone || "";
-    $("receiverName").value = p.receiverName || "";
-    $("receiverPhone").value = p.receiverPhone || "";
-    $("pickupAddress").value = p.pickupAddress || "";
-    $("deliveryAddress").value = p.deliveryAddress || "";
-    $("parcelDescription").value = p.parcelDescription || "";
-    $("weightKg").value = p.weightKg ?? "";
+    if ($("senderName")) {
+      $("senderName").value = p.senderName || "";
+    }
+
+    if ($("senderPhone")) {
+      $("senderPhone").value = p.senderPhone || "";
+    }
+
+    if ($("receiverName")) {
+      $("receiverName").value = p.receiverName || "";
+    }
+
+    if ($("receiverPhone")) {
+      $("receiverPhone").value = p.receiverPhone || "";
+    }
+
+    if ($("pickupAddress")) {
+      $("pickupAddress").value = p.pickupAddress || "";
+    }
+
+    if ($("deliveryAddress")) {
+      $("deliveryAddress").value = p.deliveryAddress || "";
+    }
+
+    if ($("parcelDescription")) {
+      $("parcelDescription").value = p.parcelDescription || "";
+    }
+
+    if ($("weightKg")) {
+      $("weightKg").value = p.weightKg ?? "";
+    }
 
     if ($("parcelDriver")) {
       $("parcelDriver").value =
@@ -682,9 +706,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const button = $("parcelSaveBtn");
 
     try {
-      alert("Receiver Phone Before Save: " + $("receiverPhone").value);
       const parcelData = {
-        console.log("RECEIVER PHONE BEFORE SAVE:", $("receiverPhone").value);
         senderName: $("senderName")?.value.trim(),
         senderPhone: $("senderPhone")?.value.trim(),
         receiverName: $("receiverName")?.value.trim(),
@@ -695,7 +717,7 @@ document.addEventListener("DOMContentLoaded", () => {
         weightKg: Number($("weightKg")?.value)
       };
 
-      const driverId = $("parcelDriver")?.value;
+      const driverId = $("parcelDriver")?.value || "";
       const imageFile = $("productImage")?.files?.[0];
 
       if (
@@ -718,8 +740,11 @@ document.addEventListener("DOMContentLoaded", () => {
         button.textContent = editingParcelId ? "Updating..." : "Saving...";
       }
 
+      // UPDATE EXISTING PARCEL
       if (editingParcelId) {
-        const currentParcel = parcels.find(p => p._id === editingParcelId);
+        const currentParcel = parcels.find(
+          p => p._id === editingParcelId
+        );
 
         if (!currentParcel) {
           throw new Error("Parcel not found.");
@@ -739,10 +764,13 @@ document.addEventListener("DOMContentLoaded", () => {
           body = formData;
         }
 
-        await api(`/api/admin/parcels/${encodeURIComponent(editingParcelId)}`, {
-          method: "PUT",
-          body
-        });
+        await api(
+          `/api/admin/parcels/${encodeURIComponent(editingParcelId)}`,
+          {
+            method: "PUT",
+            body
+          }
+        );
 
         const currentDriverId =
           currentParcel.assignedDriver?._id ||
@@ -776,6 +804,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // CREATE NEW PARCEL
       let createBody = JSON.stringify(parcelData);
 
       if (imageFile) {
@@ -838,7 +867,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       if (button) {
         button.disabled = false;
-
         button.textContent = editingParcelId
           ? "Update shipment"
           : "Save shipment";
@@ -961,9 +989,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const segments = colors.map(([color, number]) => {
       const from = start;
-
       start += pct(number);
-
       return `${color} ${from}% ${start}%`;
     });
 
@@ -1029,6 +1055,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // FIXED: The recentRows click handler now closes correctly.
   bind("recentRows", "click", e => {
     const button = e.target.closest("[data-track]");
 
@@ -1036,12 +1063,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     goTo("tracking");
 
-    if ($("trackingInput")) {
-      $("trackingInput").value = button.dataset.track;
+    if ($("trackingNumber")) {
+      $("trackingNumber").value = button.dataset.track;
     }
 
-    if ($("trackingPhone")) {
-      $("trackingPhone").value = "";
+    if ($("trackingReceiverPhone")) {
+      $("trackingReceiverPhone").value = "";
     }
 
     toast("Enter receiver phone number to track this parcel.");
@@ -1287,9 +1314,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       const password = $("driverPassword")?.value || "";
-
-      const imageFile =
-        $("driverProfileImage")?.files?.[0];
+      const imageFile = $("driverProfileImage")?.files?.[0];
 
       if (!driverData.name || !driverData.email || !driverData.phone) {
         toast("Please complete all required driver fields.");
@@ -1317,7 +1342,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (button) {
         button.disabled = true;
-
         button.textContent = editingDriverId
           ? "Updating..."
           : "Creating...";
@@ -1378,7 +1402,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } finally {
       if (button) {
         button.disabled = false;
-
         button.textContent = editingDriverId
           ? "Update driver"
           : "Add driver";
@@ -1404,7 +1427,6 @@ document.addEventListener("DOMContentLoaded", () => {
         !["delivered", "cancelled"].includes(p.status)
       ).length;
 
-      // FIXED: photo variable
       const photo = imageUrl(d.profileImage);
 
       return `
@@ -1517,7 +1539,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       openModal("viewDriverModal");
-
       return;
     }
 
@@ -1536,7 +1557,6 @@ document.addEventListener("DOMContentLoaded", () => {
         alert(
           `This driver has ${assignedParcels.length} assigned parcel(s).\n\nPlease reassign those parcels to another driver before deleting this driver.`
         );
-
         return;
       }
 
@@ -1562,13 +1582,152 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // =====================================
-  // CUSTOMER TRACKING
+  
+ 
   // =====================================
-  async function showTracking(trackingNumber, receiverPhone) {
-    if (!$("trackingResult")) return;
+  // CUSTOMER TRACKING + LIVE GPS
+  // =====================================
 
-    $("trackingResult").innerHTML =
-      '<div class="tracking-result-card">Searching parcel...</div>';
+  let liveTrackingTimer = null;
+  let liveMap = null;
+  let driverMarker = null;
+  let driverAccuracyCircle = null;
+
+  let currentTrackingNumber = "";
+  let currentReceiverPhone = "";
+
+  let gpsRequestInProgress = false;
+  let trackingRequestId = 0;
+
+  // Stop previous GPS polling
+  function stopLiveTracking() {
+    if (liveTrackingTimer) {
+      clearInterval(liveTrackingTimer);
+      liveTrackingTimer = null;
+    }
+
+    gpsRequestInProgress = false;
+  }
+
+  // Hide customer map
+  function hideLiveMap() {
+    const mapElement = $("map");
+
+    if (mapElement) {
+      mapElement.style.display = "none";
+    }
+  }
+
+  // Initialize Leaflet map
+  function initializeLiveMap(latitude, longitude) {
+    const mapElement = $("map");
+
+    if (!mapElement) {
+      throw new Error("Map element was not found in HTML.");
+    }
+
+    if (typeof L === "undefined") {
+      throw new Error(
+        "Leaflet is not loaded. Check index.html."
+      );
+    }
+
+    mapElement.style.display = "block";
+
+    if (!liveMap) {
+      liveMap = L.map("map").setView(
+        [latitude, longitude],
+        15
+      );
+
+      L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          attribution: "&copy; OpenStreetMap contributors",
+          maxZoom: 19
+        }
+      ).addTo(liveMap);
+
+      driverMarker = L.marker([
+        latitude,
+        longitude
+      ]).addTo(liveMap);
+
+      driverMarker.bindPopup(
+        "Driver's Live Location"
+      );
+
+      driverAccuracyCircle = L.circle(
+        [latitude, longitude],
+        {
+          radius: 30
+        }
+      ).addTo(liveMap);
+
+    } else {
+      driverMarker.setLatLng([
+        latitude,
+        longitude
+      ]);
+
+      driverAccuracyCircle.setLatLng([
+        latitude,
+        longitude
+      ]);
+
+      liveMap.setView(
+        [latitude, longitude],
+        15
+      );
+    }
+
+    setTimeout(() => {
+      if (liveMap) {
+        liveMap.invalidateSize();
+      }
+    }, 250);
+  }
+
+  // Update driver marker
+  function updateDriverMarker(location) {
+    if (!location) {
+      return false;
+    }
+
+    const latitude = Number(location.latitude);
+    const longitude = Number(location.longitude);
+
+    if (
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      latitude < -90 ||
+      latitude > 90 ||
+      longitude < -180 ||
+      longitude > 180
+    ) {
+      return false;
+    }
+
+    initializeLiveMap(latitude, longitude);
+
+    return true;
+  }
+
+  // Fetch live GPS location from backend
+  async function loadLiveGPS() {
+    if (
+      !currentTrackingNumber ||
+      !currentReceiverPhone ||
+      gpsRequestInProgress
+    ) {
+      return;
+    }
+
+    gpsRequestInProgress = true;
+
+    const requestId = trackingRequestId;
+    const trackingNumber = currentTrackingNumber;
+    const receiverPhone = currentReceiverPhone;
 
     try {
       const query = new URLSearchParams({
@@ -1576,20 +1735,179 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const response = await fetch(
-        `${API_BASE}/api/parcels/track/${encodeURIComponent(trackingNumber)}?${query}`
+        `${API_BASE}/api/parcels/live/${encodeURIComponent(trackingNumber)}?${query}`
       );
 
-      const data = await response.json();
+      let data = {};
 
-      if (!response.ok) {
-        throw new Error(data.message || "Parcel not found.");
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Invalid live GPS response.");
+      }
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message || "Unable to load driver location."
+        );
+      }
+
+      // Ignore old requests after a new tracking search
+      if (
+        requestId !== trackingRequestId ||
+        trackingNumber !== currentTrackingNumber ||
+        receiverPhone !== currentReceiverPhone
+      ) {
+        return;
+      }
+
+      const gpsMessage = $("liveGpsMessage");
+
+      if (!data.locationSharingEnabled) {
+        hideLiveMap();
+
+        if (gpsMessage) {
+          gpsMessage.textContent =
+            "Driver GPS sharing is currently disabled.";
+        }
+
+        return;
+      }
+
+      if (!data.driverLocation) {
+        hideLiveMap();
+
+        if (gpsMessage) {
+          gpsMessage.textContent =
+            "GPS sharing is enabled. Waiting for driver's first location update...";
+        }
+
+        return;
+      }
+
+      const updated = updateDriverMarker(
+        data.driverLocation
+      );
+
+      if (!updated) {
+        hideLiveMap();
+
+        if (gpsMessage) {
+          gpsMessage.textContent =
+            "Driver GPS coordinates are invalid.";
+        }
+
+        return;
+      }
+
+      if (gpsMessage) {
+        const updatedAt = data.driverLocation.updatedAt
+          ? new Date(
+              data.driverLocation.updatedAt
+            ).toLocaleTimeString()
+          : "Unknown";
+
+        gpsMessage.textContent =
+          "Live GPS active. Last location update: " +
+          updatedAt;
+      }
+
+    } catch (error) {
+      console.error("Live GPS error:", error);
+
+      if (requestId === trackingRequestId) {
+        const gpsMessage = $("liveGpsMessage");
+
+        if (gpsMessage) {
+          gpsMessage.textContent =
+            "Driver GPS unavailable: " + error.message;
+        }
+      }
+
+    } finally {
+      gpsRequestInProgress = false;
+    }
+  }
+
+  // Start GPS polling every 5 seconds
+  function startLiveTracking() {
+    stopLiveTracking();
+
+    loadLiveGPS();
+
+    liveTrackingTimer = setInterval(() => {
+      loadLiveGPS();
+    }, 5000);
+  }
+
+  // Search and display parcel
+  async function showTracking(
+    trackingNumber,
+    receiverPhone
+  ) {
+    stopLiveTracking();
+
+    // Identify this tracking search
+    trackingRequestId++;
+
+    const requestId = trackingRequestId;
+
+    currentTrackingNumber =
+      trackingNumber.trim().toUpperCase();
+
+    currentReceiverPhone =
+      receiverPhone.trim();
+
+    const resultElement =
+      $("trackingResult") || $("details");
+
+    if (!resultElement) {
+      toast("Tracking result area was not found in HTML.");
+      return;
+    }
+
+    hideLiveMap();
+
+    resultElement.innerHTML =
+      '<div class="tracking-result-card">Searching parcel...</div>';
+
+    if ($("message")) {
+      $("message").textContent =
+        "Searching parcel...";
+    }
+
+    try {
+      const query = new URLSearchParams({
+        receiverPhone: currentReceiverPhone
+      });
+
+      const response = await fetch(
+        `${API_BASE}/api/parcels/track/${encodeURIComponent(currentTrackingNumber)}?${query}`
+      );
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Invalid server response.");
+      }
+
+      if (!response.ok || data.success === false) {
+        throw new Error(
+          data.message || "Parcel not found."
+        );
+      }
+
+      // Ignore an older parcel search response
+      if (requestId !== trackingRequestId) {
+        return;
       }
 
       const p = data.parcel || data;
-
       const photo = imageUrl(p.productImage);
 
-      $("trackingResult").innerHTML = `
+      resultElement.innerHTML = `
         <div class="tracking-result-card">
 
           ${photo ? `
@@ -1600,41 +1918,92 @@ document.addEventListener("DOMContentLoaded", () => {
             >
           ` : ""}
 
-          <h3>Shipment ${esc(p.trackingNumber || trackingNumber)}</h3>
+          <h3>
+            Shipment ${esc(
+              p.trackingNumber || currentTrackingNumber
+            )}
+          </h3>
 
-          <p><b>Description:</b> ${esc(p.parcelDescription || "—")}</p>
-          <p><b>Status:</b> ${badge(p.status)}</p>
-          <p><b>Created:</b> ${esc(dateFormat(p.createdAt))}</p>
-          <p><b>Last Updated:</b> ${esc(dateFormat(p.updatedAt))}</p>
+          <p>
+            <b>Description:</b>
+            ${esc(p.parcelDescription || "—")}
+          </p>
+
+          <p>
+            <b>Status:</b>
+            ${badge(p.status)}
+          </p>
+
+          <p>
+            <b>Created:</b>
+            ${esc(dateFormat(p.createdAt))}
+          </p>
+
+          <p>
+            <b>Last Updated:</b>
+            ${esc(dateFormat(p.updatedAt))}
+          </p>
 
         </div>
+
+        <p
+          id="liveGpsMessage"
+          style="margin-top:12px;"
+          aria-live="polite"
+        >
+          Checking driver GPS...
+        </p>
       `;
 
+      if ($("message")) {
+        $("message").textContent =
+          "Parcel found successfully.";
+      }
+
+      startLiveTracking();
+
     } catch (error) {
-      $("trackingResult").innerHTML = `
+      if (requestId !== trackingRequestId) {
+        return;
+      }
+
+      stopLiveTracking();
+      hideLiveMap();
+
+      resultElement.innerHTML = `
         <div class="tracking-result-card">
           ${esc(error.message)}
         </div>
       `;
+
+      if ($("message")) {
+        $("message").textContent =
+          error.message;
+      }
     }
   }
 
+  // Tracking form submit
   bind("trackingForm", "submit", e => {
     e.preventDefault();
 
     const trackingNumber =
-      $("trackingInput")?.value.trim();
+      $("trackingNumber")?.value.trim();
 
     const receiverPhone =
-      $("trackingPhone")?.value.trim();
+      $("trackingReceiverPhone")?.value.trim();
 
     if (!trackingNumber || !receiverPhone) {
       toast("Enter tracking number and receiver phone.");
       return;
     }
 
-    showTracking(trackingNumber, receiverPhone);
+    showTracking(
+      trackingNumber,
+      receiverPhone
+    );
   });
+
 
   // =====================================
   // REPORTS
@@ -1727,7 +2096,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
 
     a.href = url;
@@ -1759,7 +2127,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement("a");
 
     a.href = url;
@@ -1900,31 +2267,3 @@ document.addEventListener("DOMContentLoaded", () => {
   restoreSession();
 
 });
-// SMS ON/OFF STATUS
-const smsEnabled = document.getElementById("smsEnabled");
-const smsStatus = document.getElementById("smsStatus");
-
-if (smsEnabled && smsStatus) {
-  const updateSmsStatus = () => {
-    smsStatus.textContent = smsEnabled.checked ? "ON" : "OFF";
-    smsStatus.classList.toggle("is-on", smsEnabled.checked);
-  };
-
-  smsEnabled.addEventListener("change", updateSmsStatus);
-  updateSmsStatus();
-}
-
-
-// EMAIL ON/OFF STATUS
-const emailEnabled = document.getElementById("emailEnabled");
-const emailStatus = document.getElementById("emailStatus");
-
-if (emailEnabled && emailStatus) {
-  const updateEmailStatus = () => {
-    emailStatus.textContent = emailEnabled.checked ? "ON" : "OFF";
-    emailStatus.classList.toggle("is-on", emailEnabled.checked);
-  };
-
-  emailEnabled.addEventListener("change", updateEmailStatus);
-  updateEmailStatus();
-}

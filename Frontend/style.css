@@ -2013,3 +2013,27 @@ tbody tr:hover {
     flex-direction: column;
   }
 }
+/* =====================================
+   CUSTOMER LIVE GPS MAP
+===================================== */
+
+#map {
+  width: 100%;
+  height: 400px;
+  min-height: 300px;
+  margin-top: 20px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #eef2f7;
+  z-index: 1;
+}
+
+#map:empty {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  #map {
+    height: 320px;
+  }
+}
